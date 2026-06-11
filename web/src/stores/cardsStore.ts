@@ -11,11 +11,13 @@ export type CardGeom = {
 
 type CardsState = {
   cards: Record<string, CardGeom>
+  maximized: string | null
   ensureCard: (agent: string) => void
   reconcile: (liveAgents: string[]) => void
   move: (agent: string, x: number, y: number) => void
   setSize: (agent: string, w: number, h: number) => void
   setMinimized: (agent: string, minimized: boolean) => void
+  setMaximized: (agent: string | null) => void
 }
 
 // New nodes cascade across canvas space; React Flow's fitView frames them.
@@ -28,6 +30,7 @@ export const useCards = create<CardsState>()(
   persist(
     (set, get) => ({
       cards: {},
+      maximized: null,
 
       ensureCard: agent => {
         if (get().cards[agent]) return
@@ -63,9 +66,14 @@ export const useCards = create<CardsState>()(
       setMinimized: (agent, minimized) =>
         set(s => {
           const c = s.cards[agent]
-          return c ? { cards: { ...s.cards, [agent]: { ...c, minimized } } } : s
+          if (!c) return s
+          // restoring from the dock also clears any maximize on that agent
+          const maximized = minimized && s.maximized === agent ? null : s.maximized
+          return { cards: { ...s.cards, [agent]: { ...c, minimized } }, maximized }
         }),
+
+      setMaximized: agent => set({ maximized: agent }),
     }),
-    { name: 'mc-layout-v2' },
+    { name: 'mc-layout-v2', partialize: s => ({ cards: s.cards }) },
   ),
 )

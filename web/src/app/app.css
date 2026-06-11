@@ -45,6 +45,102 @@
   flex: 1;
 }
 
+/* ── environment chips (MCP / skills) ──────────────────────────────── */
+.env-info {
+  position: relative;
+  display: flex;
+  gap: 6px;
+}
+
+.env-chip {
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink-mid);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.env-chip:hover,
+.env-chip.active {
+  color: var(--phos-green);
+  border-color: var(--phos-green-dim);
+}
+
+.env-panel {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  z-index: 10001;
+  width: 280px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.env-panel.wide {
+  width: 420px;
+}
+
+.env-panel-head {
+  padding: 8px 10px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--ink-low);
+  border-bottom: 1px solid var(--line-dim);
+}
+
+.env-scroll {
+  overflow-y: auto;
+}
+
+.env-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-dim);
+}
+
+.env-row.col {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.env-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-hi);
+}
+
+.env-tag {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--phos-green-dim);
+  text-transform: uppercase;
+}
+
+.env-desc {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--ink-mid);
+}
+
+.env-empty {
+  padding: 10px;
+  font-size: 10px;
+  color: var(--ink-low);
+}
+
 .strip-btn {
   padding: 4px 10px;
   background: var(--bg-raised);
@@ -73,6 +169,19 @@
   cursor: default;
 }
 
+
+/* ── maximized terminal (fills the viewport below the strip) ───────── */
+.maximized-view {
+  position: fixed;
+  inset: 36px 0 0 0;
+  z-index: 9000;
+  padding: 8px;
+  background: var(--bg-void);
+}
+
+.maximized-view .console-card {
+  border-color: var(--phos-green-dim);
+}
 
 /* ── dock ────────────────────────────────────────────────────────── */
 .dock {

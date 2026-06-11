@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { Canvas } from './canvas/Canvas'
 import { Dock } from './app/Dock'
+import { MaximizedView } from './app/MaximizedView'
 import { SpawnDialog } from './app/SpawnDialog'
 import { TelemetryStrip } from './app/TelemetryStrip'
 import { useAgents } from './stores/agentsStore'
@@ -50,6 +51,7 @@ export const App = () => {
           <p className="empty-hint">drag a port on one card's edge onto another to wire them</p>
         </div>
       )}
+      <MaximizedView />
       <Dock />
       {spawnOpen && <SpawnDialog onClose={() => setSpawnOpen(false)} />}
     </main>

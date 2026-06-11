@@ -20,6 +20,7 @@ export const ConsoleNode = memo(({ id, data, selected }: NodeProps) => {
   const meta = (data as ConsoleNodeData).meta
   const killAgent = useAgents(s => s.killAgent)
   const setMinimized = useCards(s => s.setMinimized)
+  const setMaximized = useCards(s => s.setMaximized)
 
   return (
     <div className="console-node">
@@ -35,6 +36,7 @@ export const ConsoleNode = memo(({ id, data, selected }: NodeProps) => {
         dead={meta.dead}
         onMinimize={() => setMinimized(id, true)}
         onKill={() => void killAgent(id)}
+        onToggleMaximize={() => setMaximized(id)}
       />
     </div>
   )

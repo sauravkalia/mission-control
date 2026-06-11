@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAgents } from '../stores/agentsStore'
 import { useEvents } from '../stores/eventsStore'
+import { EnvInfo } from './EnvInfo'
 
 const gmtNow = (): string => `${new Date().toISOString().slice(11, 19)}Z`
 
@@ -22,6 +23,7 @@ export const TelemetryStrip = ({ onNew }: { onNew: () => void }) => {
       <span className={`strip-item ${linkOk ? 'link-go' : 'link-los'}`}>
         LINK {linkOk ? '●GO' : '●LOS'}
       </span>
+      <EnvInfo />
       <span className="strip-spacer" />
       <button type="button" className="strip-btn" onClick={onNew}>
         N NEW STATION

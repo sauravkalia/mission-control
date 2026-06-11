@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import express, { type RequestHandler } from 'express'
 import { WebSocketServer } from 'ws'
 import { agentsRouter, bootRegistry, isKnownSession } from './agents'
+import { readEnvironment } from './environment'
 import { addEventClient, startHeartbeat } from './events'
 import { handleMcp } from './mcp'
 import { attachRelay } from './relay'
@@ -58,6 +59,9 @@ app.use(express.json())
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
+})
+app.get('/api/environment', (_req, res) => {
+  res.json(readEnvironment())
 })
 app.use('/api', agentsRouter())
 app.all('/mcp', mcpGuard, handleMcp)

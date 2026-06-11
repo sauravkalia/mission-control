@@ -19,6 +19,8 @@ type ConsoleCardProps = {
   dead: boolean
   onMinimize: () => void
   onKill: () => void
+  maximized?: boolean
+  onToggleMaximize?: () => void
 }
 
 const KILL_HOLD_MS = 600
@@ -52,7 +54,16 @@ const KillButton = ({ onKill }: { onKill: () => void }) => {
   )
 }
 
-export const ConsoleCard = ({ callsign, session, repoLabel, dead, onMinimize, onKill }: ConsoleCardProps) => {
+export const ConsoleCard = ({
+  callsign,
+  session,
+  repoLabel,
+  dead,
+  onMinimize,
+  onKill,
+  maximized,
+  onToggleMaximize,
+}: ConsoleCardProps) => {
   const hostRef = useRef<HTMLDivElement>(null)
   const [link, setLink] = useState<LinkState>('connecting')
   const [copied, setCopied] = useState(false)
@@ -165,9 +176,21 @@ export const ConsoleCard = ({ callsign, session, repoLabel, dead, onMinimize, on
           <button type="button" className="card-btn" title="copy tmux attach command" onClick={copyAttach}>
             {copied ? '✓' : '⧉'}
           </button>
-          <button type="button" className="card-btn" title="minimize to dock" onClick={onMinimize}>
-            –
-          </button>
+          {!maximized && (
+            <button type="button" className="card-btn" title="minimize to dock" onClick={onMinimize}>
+              –
+            </button>
+          )}
+          {onToggleMaximize && (
+            <button
+              type="button"
+              className="card-btn"
+              title={maximized ? 'restore to canvas' : 'maximize'}
+              onClick={onToggleMaximize}
+            >
+              {maximized ? '❐' : '⤢'}
+            </button>
+          )}
           <KillButton onKill={onKill} />
         </span>
       </header>

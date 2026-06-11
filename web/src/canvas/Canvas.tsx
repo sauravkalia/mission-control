@@ -30,6 +30,7 @@ type EdgeFx = { heat: number; pulseNonce: number; from: string }
 export const Canvas = () => {
   const agents = useAgents(s => s.agents)
   const cards = useCards(s => s.cards)
+  const maximized = useCards(s => s.maximized)
   const ensureCard = useCards(s => s.ensureCard)
   const reconcile = useCards(s => s.reconcile)
   const move = useCards(s => s.move)
@@ -55,7 +56,7 @@ export const Canvas = () => {
     setNodes(prev => {
       const byId = new Map(prev.map(n => [n.id, n]))
       return agents
-        .filter(a => !cards[a.agent]?.minimized)
+        .filter(a => !cards[a.agent]?.minimized && a.agent !== maximized)
         .map(a => {
           const geom = cards[a.agent]
           const existing = byId.get(a.agent)
@@ -70,7 +71,7 @@ export const Canvas = () => {
           } satisfies Node
         })
     })
-  }, [agents, cards, setNodes])
+  }, [agents, cards, maximized, setNodes])
 
   // edges from links, decorated with live heat + pulse
   useEffect(() => {
