@@ -3,9 +3,11 @@ import { Dock } from './app/Dock'
 import { SpawnDialog } from './app/SpawnDialog'
 import { TelemetryStrip } from './app/TelemetryStrip'
 import { AgentCard } from './cards/AgentCard'
-import { PlotPanel } from './plot/PlotPanel'
+import { ThePlot } from './plot/ThePlot'
 import { useAgents } from './stores/agentsStore'
 import { useCards } from './stores/cardsStore'
+import { useEvents } from './stores/eventsStore'
+import { useLinks } from './stores/linksStore'
 import './app/app.css'
 
 const AGENTS_POLL_MS = 5000
@@ -17,6 +19,8 @@ export const App = () => {
   const ensureCard = useCards(s => s.ensureCard)
   const reconcile = useCards(s => s.reconcile)
   const clampToViewport = useCards(s => s.clampToViewport)
+  const fetchLinks = useLinks(s => s.fetchLinks)
+  const connectEvents = useEvents(s => s.connect)
   const [spawnOpen, setSpawnOpen] = useState(false)
 
   useEffect(() => {
@@ -25,9 +29,12 @@ export const App = () => {
 
   useEffect(() => {
     void fetchAgents()
+    void fetchLinks()
     const t = window.setInterval(() => void fetchAgents(), AGENTS_POLL_MS)
     return () => window.clearInterval(t)
-  }, [fetchAgents])
+  }, [fetchAgents, fetchLinks])
+
+  useEffect(() => connectEvents(), [connectEvents])
 
   useEffect(() => {
     if (!loaded) return // never reconcile against an unfetched (empty) list
@@ -46,7 +53,7 @@ export const App = () => {
   return (
     <main className="canvas">
       <TelemetryStrip onNew={() => setSpawnOpen(true)} />
-      <PlotPanel />
+      <ThePlot />
       {agents.map(a => (
         <AgentCard key={a.agent} meta={a} />
       ))}

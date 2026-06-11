@@ -100,3 +100,11 @@ export const capturePaneTail = async (name: string, lines = 15): Promise<string>
     .slice(-lines)
     .join('\n')
 }
+
+// Rendered pane incl. scrollback — the LIVE conversation, since Claude buffers
+// a running session's turns in memory and doesn't flush them to the transcript.
+export const capturePaneScrollback = async (name: string, scrollback = 220): Promise<string[]> => {
+  const result = await tmux(['capture-pane', '-p', '-S', `-${String(scrollback)}`, '-t', `=${name}:`])
+  if (!result.ok) return []
+  return result.stdout.split('\n')
+}

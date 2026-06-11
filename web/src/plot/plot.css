@@ -1,0 +1,153 @@
+.plot-panel {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  width: 460px;
+  height: 300px;
+  margin-left: -230px;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  outline: 1px solid var(--line-dim);
+  outline-offset: -4px;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.plot-header {
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--ink-mid);
+  border-bottom: 1px solid var(--line-dim);
+}
+
+.plot-svg {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.plot-orbit {
+  fill: none;
+  stroke: rgba(81, 240, 138, 0.1);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+
+/* ── wires ── */
+.plot-wire {
+  stroke: var(--phos-green);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 4;
+  cursor: pointer;
+}
+
+.plot-wire:hover {
+  stroke: var(--st-los);
+  opacity: 1 !important;
+}
+
+.plot-wire.drawing {
+  stroke: var(--phos-amber);
+  stroke-dasharray: 4 4;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* ── pull tracer ── */
+.plot-tracer {
+  fill: var(--phos-green);
+  filter: drop-shadow(0 0 4px rgba(81, 240, 138, 0.8));
+}
+
+/* ── BASE ── */
+.plot-base-ring {
+  fill: none;
+  stroke: var(--phos-green-dim);
+  stroke-width: 1.5;
+}
+
+.plot-base-cross {
+  stroke: var(--phos-green-dim);
+  stroke-width: 1;
+}
+
+.plot-base-label {
+  fill: var(--ink-low);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-anchor: middle;
+}
+
+.plot-base.live .plot-base-ring {
+  animation: base-pulse 5s ease-in-out infinite;
+}
+
+.plot-base.cold .plot-base-ring,
+.plot-base.cold .plot-base-cross {
+  stroke: var(--ink-ghost);
+  transition: stroke 600ms;
+}
+
+@keyframes base-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* ── stations ── */
+.plot-station {
+  cursor: pointer;
+}
+
+.station-halo {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1;
+  opacity: 0.4;
+}
+
+.station-core {
+  fill: currentcolor;
+}
+
+.station-label {
+  fill: var(--ink-mid);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+}
+
+.plot-station.go {
+  color: var(--st-go);
+}
+
+.plot-station.dead {
+  color: var(--st-los);
+}
+
+.plot-station.linking .station-halo {
+  opacity: 1;
+  stroke-width: 2;
+}
+
+.plot-station:hover .station-halo {
+  opacity: 0.8;
+}
+
+/* ── footer ── */
+.plot-foot {
+  padding: 5px 10px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--ink-low);
+  border-top: 1px solid var(--line-dim);
+}
+
+.plot-foot-pulls {
+  color: var(--phos-green-dim);
+}

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useAgents } from '../stores/agentsStore'
+import { useEvents } from '../stores/eventsStore'
 
 const gmtNow = (): string => `${new Date().toISOString().slice(11, 19)}Z`
 
 export const TelemetryStrip = ({ onNew }: { onNew: () => void }) => {
   const stations = useAgents(s => s.agents.length)
-  const linkOk = useAgents(s => s.linkOk)
+  const linkOk = useEvents(s => s.baseLive)
   const [gmt, setGmt] = useState(gmtNow)
 
   useEffect(() => {

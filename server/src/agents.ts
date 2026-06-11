@@ -4,6 +4,8 @@ import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Router } from 'express'
 import { AGENT_NAME_RE, sessionNameFor, type AgentMeta, type SpawnRequest } from '@mc/shared'
+import { emitLinksChanged } from './events'
+import { addLink, listLinks, pruneLinks, removeLink } from './links'
 import { hooksFilePath, loadRegistry, saveRegistry, type AgentRecord } from './registry'
 import {
   capturePaneTail,
@@ -29,6 +31,16 @@ export const bootRegistry = async (): Promise<void> => {
 
 export const isKnownSession = (session: string): boolean =>
   registry.some(r => sessionNameFor(r.agent) === session)
+
+export const isKnownAgent = (agent: string): boolean => registry.some(r => r.agent === agent)
+
+export const listAgentNames = (): string[] => registry.map(r => r.agent)
+
+export const agentSessionId = (agent: string): string | null =>
+  registry.find(r => r.agent === agent)?.sessionId ?? null
+
+export const agentRepoDir = (agent: string): string | undefined =>
+  registry.find(r => r.agent === agent)?.repoDir
 
 const toMeta = (r: AgentRecord, live: Map<string, { dead: boolean }>): AgentMeta => ({
   agent: r.agent,
@@ -72,7 +84,38 @@ export const agentsRouter = (): Router => {
       registry = registry.filter(r => live.has(sessionNameFor(r.agent)))
       saveRegistry(registry)
     }
+    pruneLinks(new Set(registry.map(r => r.agent)))
     res.json(registry.map(r => toMeta(r, live)))
+  })
+
+  router.get('/links', (_req, res) => {
+    res.json(listLinks())
+  })
+
+  router.post('/links', (req, res) => {
+    const { a, b } = (req.body ?? {}) as { a?: unknown; b?: unknown }
+    if (typeof a !== 'string' || typeof b !== 'string' || a === b) {
+      res.status(400).json({ error: 'two distinct callsigns required' })
+      return
+    }
+    if (!registry.some(r => r.agent === a) || !registry.some(r => r.agent === b)) {
+      res.status(404).json({ error: 'both agents must be on console' })
+      return
+    }
+    addLink(a, b)
+    emitLinksChanged()
+    res.status(201).json(listLinks())
+  })
+
+  router.delete('/links', (req, res) => {
+    const { a, b } = (req.body ?? {}) as { a?: unknown; b?: unknown }
+    if (typeof a !== 'string' || typeof b !== 'string') {
+      res.status(400).json({ error: 'two callsigns required' })
+      return
+    }
+    removeLink(a, b)
+    emitLinksChanged()
+    res.status(200).json(listLinks())
   })
 
   router.post('/agents', async (req, res) => {

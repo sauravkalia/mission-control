@@ -2,6 +2,8 @@ import { createServer } from 'node:http'
 import express, { type RequestHandler } from 'express'
 import { WebSocketServer } from 'ws'
 import { agentsRouter, bootRegistry, isKnownSession } from './agents'
+import { addEventClient, startHeartbeat } from './events'
+import { handleMcp } from './mcp'
 import { attachRelay } from './relay'
 import { ensureMcDir } from './registry'
 import { hasSession } from './tmux'
@@ -9,6 +11,7 @@ import { hasSession } from './tmux'
 const PORT = 4711
 const HOST = '127.0.0.1'
 const TERM_PATH = /^\/ws\/term\/([A-Za-z0-9_-]+)$/
+const EVENTS_PATH = '/ws/events'
 // Browsers do NOT enforce same-origin on WebSockets — without this check any
 // website could drive the pty from the user's browser. Vite's proxy forwards
 // the browser's real Origin unchanged.
@@ -36,6 +39,16 @@ const apiGuard: RequestHandler = (req, res, next) => {
   next()
 }
 
+// The MCP endpoint is reached by claude (not a browser, sends no Origin), so it
+// gets a Host-only guard against DNS rebinding rather than the Origin check.
+const mcpGuard: RequestHandler = (req, res, next) => {
+  if (!LOOPBACK_HOSTS.has(req.headers.host ?? '')) {
+    res.status(403).json({ error: 'forbidden host' })
+    return
+  }
+  next()
+}
+
 ensureMcDir()
 await bootRegistry()
 
@@ -47,9 +60,11 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
 })
 app.use('/api', agentsRouter())
+app.all('/mcp', mcpGuard, handleMcp)
 
 const server = createServer(app)
 const wss = new WebSocketServer({ noServer: true })
+const eventsWss = new WebSocketServer({ noServer: true })
 
 server.on('upgrade', (req, socket, head) => {
   // The http server detaches its own error listener before emitting 'upgrade';
@@ -63,6 +78,12 @@ server.on('upgrade', (req, socket, head) => {
   }
   // No `new URL` here — a crafted request-target like `//::` makes it throw.
   const path = (req.url ?? '').split('?')[0] ?? ''
+
+  if (path === EVENTS_PATH) {
+    eventsWss.handleUpgrade(req, socket, head, ws => addEventClient(ws))
+    return
+  }
+
   const session = TERM_PATH.exec(path)?.[1]
   if (!session || !isKnownSession(session)) {
     socket.destroy()
@@ -78,6 +99,8 @@ server.on('upgrade', (req, socket, head) => {
     })
   })
 })
+
+startHeartbeat()
 
 server.listen(PORT, HOST, () => {
   console.log(`[mc] uplink on http://${HOST}:${PORT}`)
