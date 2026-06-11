@@ -108,3 +108,11 @@ export const capturePaneScrollback = async (name: string, scrollback = 220): Pro
   if (!result.ok) return []
   return result.stdout.split('\n')
 }
+
+// Just the visible screen, structure preserved (blank lines kept) — needed to
+// locate the live status line relative to the input box for status detection.
+export const capturePaneScreen = async (name: string): Promise<string[]> => {
+  const result = await tmux(['capture-pane', '-p', '-t', `=${name}:`])
+  if (!result.ok) return []
+  return result.stdout.split('\n')
+}

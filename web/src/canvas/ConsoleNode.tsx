@@ -22,9 +22,8 @@ export const ConsoleNode = memo(({ id, data, selected }: NodeProps) => {
   const killAgent = useAgents(s => s.killAgent)
   const setMinimized = useCards(s => s.setMinimized)
   const setMaximized = useCards(s => s.setMaximized)
+  // subscribing to display() re-renders whenever this agent's entry changes
   const status = useStatus(s => s.display(meta.agent))
-  // subscribe to this agent's entry so display() recomputes on change
-  useStatus(s => s.byAgent[meta.agent])
 
   return (
     <div className="console-node">

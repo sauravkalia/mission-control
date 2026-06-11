@@ -43,13 +43,34 @@ export const useStatus = create<StatusState>((set, get) => ({
     }
   },
 
+  // The 5s REST poll owns the live agent SET. We never clobber an existing
+  // entry's status — the WS 'set' path owns transitions, and meta can lag a
+  // WS event (stale 'idle' over a live 'running'). But we DO drop agents that
+  // no longer exist, so a reused agent name starts from its fresh meta status
+  // instead of inheriting the dead agent's stale entry — and entries/timers
+  // don't grow unbounded.
   seed: metas => {
-    set(s => {
-      const byAgent = { ...s.byAgent }
-      for (const m of metas) {
-        if (!byAgent[m.agent]) byAgent[m.agent] = { status: m.status, completedAt: null }
+    const live = new Set(metas.map(m => m.agent))
+
+    for (const agent of [...timers.keys()]) {
+      if (!live.has(agent)) {
+        window.clearTimeout(timers.get(agent))
+        timers.delete(agent)
       }
-      return { byAgent }
+    }
+
+    set(s => {
+      const byAgent: Record<string, Entry> = {}
+      let changed = Object.keys(s.byAgent).length !== metas.length // a prune happened
+      for (const m of metas) {
+        const prev = s.byAgent[m.agent]
+        if (prev) byAgent[m.agent] = prev
+        else {
+          byAgent[m.agent] = { status: m.status, completedAt: null }
+          changed = true
+        }
+      }
+      return changed ? { byAgent } : s
     })
   },
 

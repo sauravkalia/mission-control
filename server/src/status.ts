@@ -1,27 +1,43 @@
 import type { AgentStatus } from '@mc/shared'
 import { emit } from './events'
-import { capturePaneTail, listMcSessions } from './tmux'
+import { capturePaneScreen, listMcSessions } from './tmux'
 
-// Per-agent status from the rendered pane. Calibrated against Claude 2.1.x:
-//   running     → spinner line "<glyph> Gerund…"      (present tense, ellipsis)
-//   done/idle   → "<glyph> Gerund for 12s" then "❯ "  (past tense "for Ns")
-//   needs-input → a permission / trust dialog
+// Per-agent status from the rendered pane. The naive "scan the whole tail"
+// approach false-positives on prose (a bullet "● Wait… Actually" looks like a
+// spinner; stale "esc to interrupt" in scrollback never clears). So we locate
+// the ONE live status line — the last meaningful line just above the input box —
+// and classify only that, plus the input-box region for permission dialogs.
+//
+// Calibrated to Claude 2.1.x:
+//   running     → spinner line "<spinner-glyph> gerund… (Ns)"  (ellipsis)
+//   done/idle   → "<glyph> Gerund for 12s" then "❯ "           (past tense)
+//   needs-input → input box shows a numbered menu "❯ 1." / trust dialog
 //   exited      → the tmux pane is dead
 
 const POLL_MS = 2000
 
-const NEEDS_INPUT_RE = /Do you want|I trust this folder|❯ 1\.|Allow this|Proceed\?|\(y\/n\)/i
-// a Claude status line: glyph + Capitalized gerund + ("…" running | "for Ns" done)
-const STATUS_LINE_RE = /(?:^|\n)\s*\S{1,2}\s+[A-Z][a-z]+(…|\s+for\s+\d+s)/g
+// Claude's rotating spinner glyphs (NOT the content bullets ● ⏺ ⎿ or prompt ❯).
+const SPINNER = '[✻✶✽✳✢✺✹✸✷✦✧✥⋆∗⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠟⠯⠷⠾⠽⠻]'
+const SPINNER_RE = new RegExp(`^\\s*${SPINNER}\\s+[A-Za-z][\\w' .,/-]*…`)
+const WORK_RE = /….*(\(\s*\d+s|esc to interrupt)/i
+// chrome lines to skip when finding the live status line
+const CHROME_RE = /^\s*$|^\s*[─━│╭╰╮╯┌┐└┘]+\s*$|⏵⏵|auto mode on|ctx:\d|session:\d|^\s*[❯>]\s*$/u
+// a selectable numbered option (permission / trust dialog) — anchored, not prose
+const DIALOG_RE = /[❯>]\s*1\.\s|I trust this folder|\(y\/n\)/i
 
-const classify = (tail: string): AgentStatus => {
-  if (NEEDS_INPUT_RE.test(tail)) return 'needs-input'
-  let match: RegExpExecArray | null
-  let last: string | null = null
-  STATUS_LINE_RE.lastIndex = 0
-  while ((match = STATUS_LINE_RE.exec(tail)) !== null) last = match[0]
-  if (last?.includes('…')) return 'running'
-  if (/esc to interrupt/i.test(tail)) return 'running'
+const liveStatusLine = (lines: string[]): string => {
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i] ?? ''
+    if (!CHROME_RE.test(line)) return line
+  }
+  return ''
+}
+
+export const classify = (lines: string[]): AgentStatus => {
+  // a permission/trust dialog renders a numbered menu in the bottom region
+  if (DIALOG_RE.test(lines.slice(-12).join('\n'))) return 'needs-input'
+  const live = liveStatusLine(lines)
+  if (SPINNER_RE.test(live) || WORK_RE.test(live)) return 'running'
   return 'idle'
 }
 
@@ -29,20 +45,31 @@ const statuses = new Map<string, AgentStatus>()
 
 export const getStatus = (agent: string): AgentStatus => statuses.get(agent) ?? 'idle'
 
+let ticking = false
+
 const tick = async (): Promise<void> => {
-  const live = await listMcSessions()
-  // drop agents whose session is gone
-  for (const agent of statuses.keys()) {
-    if (!live.has(`mc-${agent}`)) statuses.delete(agent)
-  }
-  for (const [session, state] of live) {
-    if (!session.startsWith('mc-')) continue
-    const agent = session.slice(3)
-    const next: AgentStatus = state.dead ? 'exited' : classify(await capturePaneTail(session, 12))
-    if (statuses.get(agent) !== next) {
-      statuses.set(agent, next)
-      emit({ type: 'status', agent, status: next })
+  if (ticking) return // a slow capture must not let ticks stack
+  ticking = true
+  try {
+    const live = await listMcSessions()
+    // a killed session: drop it and tell the UI so the glow clears
+    for (const agent of [...statuses.keys()]) {
+      if (!live.has(`mc-${agent}`)) {
+        statuses.delete(agent)
+        emit({ type: 'status', agent, status: 'exited' })
+      }
     }
+    for (const [session, state] of live) {
+      if (!session.startsWith('mc-')) continue
+      const agent = session.slice(3)
+      const next: AgentStatus = state.dead ? 'exited' : classify(await capturePaneScreen(session))
+      if (statuses.get(agent) !== next) {
+        statuses.set(agent, next)
+        emit({ type: 'status', agent, status: next })
+      }
+    }
+  } finally {
+    ticking = false
   }
 }
 

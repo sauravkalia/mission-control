@@ -28,7 +28,10 @@ const textOf = (result: unknown): string => {
   return ''
 }
 
+let shuttingDown = false
+
 const connect = async (): Promise<Client | null> => {
+  if (shuttingDown) return null
   if (client) return client
   if (connecting) return connecting
   connecting = (async () => {
@@ -36,6 +39,12 @@ const connect = async (): Promise<Client | null> => {
       const transport = new StdioClientTransport({ command: COMMAND, args: ARGS, env: { ...process.env } as Record<string, string> })
       const c = new Client({ name: 'mission-control', version: '0.1.0' })
       await c.connect(transport)
+      // closeVault() may have run while we were connecting — don't publish a
+      // freshly-spawned child as the singleton; reap it instead.
+      if (shuttingDown) {
+        void c.close().catch(() => undefined)
+        return null
+      }
       c.onclose = () => {
         client = null
         stats = { ...stats, connected: false }
@@ -90,7 +99,11 @@ const refresh = async (): Promise<void> => {
 }
 
 export const closeVault = async (): Promise<void> => {
-  const c = client
+  shuttingDown = true
+  // a connect may be in flight — await it and reap whatever it produced, so a
+  // child that spawns during shutdown isn't orphaned.
+  const pending = connecting
+  const c = client ?? (pending ? await pending.catch(() => null) : null)
   client = null
   await c?.close().catch(() => undefined)
 }
