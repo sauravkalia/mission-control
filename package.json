@@ -9,9 +9,15 @@
   "scripts": {
     "dev": "concurrently -n srv,web -c green,cyan \"pnpm --filter @mc/server dev\" \"pnpm --filter @mc/web dev\"",
     "typecheck": "pnpm -r typecheck",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "bundle:server": "node scripts/bundle-server.mjs",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "devDependencies": {
-    "concurrently": "^10.0.3"
+    "@tauri-apps/cli": "^2",
+    "concurrently": "^10.0.3",
+    "esbuild": "^0.24.0"
   }
 }

@@ -18,7 +18,14 @@ const EVENTS_PATH = '/ws/events'
 // Browsers do NOT enforce same-origin on WebSockets — without this check any
 // website could drive the pty from the user's browser. Vite's proxy forwards
 // the browser's real Origin unchanged.
-const ALLOWED_ORIGINS = new Set([`http://localhost:${WEB_PORT}`, `http://127.0.0.1:${WEB_PORT}`])
+// tauri://localhost (macOS/Linux) and http://tauri.localhost (Windows) are the
+// packaged-app webview origins.
+const ALLOWED_ORIGINS = new Set([
+  `http://localhost:${WEB_PORT}`,
+  `http://127.0.0.1:${WEB_PORT}`,
+  'tauri://localhost',
+  'http://tauri.localhost',
+])
 
 // POST /api/agents launches claude in an arbitrary directory — it must never
 // be reachable from a hostile web page. Host check closes DNS rebinding

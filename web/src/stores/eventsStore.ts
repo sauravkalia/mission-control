@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { AgentStatus, VaultStats } from '@mc/shared'
+import { wsUrl } from '../lib/api'
 import { useLinks } from './linksStore'
 import { useStatus } from './statusStore'
 import { useVault } from './vaultStore'
@@ -35,8 +36,7 @@ export const useEvents = create<EventsState>((set) => ({
 
     const open = () => {
       if (closed) return
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-      const sock = new WebSocket(`${proto}://${location.host}/ws/events`)
+      const sock = new WebSocket(wsUrl('/ws/events'))
       sock.onmessage = ev => {
         const event = JSON.parse(ev.data as string) as
           | { type: 'pull'; from: string; to: string; bytes: number; at: number }

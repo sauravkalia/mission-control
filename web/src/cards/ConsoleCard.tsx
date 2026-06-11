@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { ClientMessage } from '@mc/shared'
+import { wsUrl } from '../lib/api'
 import type { DisplayStatus } from '../stores/statusStore'
 import { mocrTermTheme } from '../theme/mocrTermTheme'
 import '@xterm/xterm/css/xterm.css'
@@ -123,8 +124,7 @@ export const ConsoleCard = ({
 
     const connect = () => {
       if (disposed) return
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-      const socket = new WebSocket(`${proto}://${location.host}/ws/term/${session}`)
+      const socket = new WebSocket(wsUrl(`/ws/term/${session}`))
       socket.binaryType = 'arraybuffer'
       socket.onopen = () => {
         setLink('up')

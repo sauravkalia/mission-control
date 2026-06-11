@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { apiUrl } from '../lib/api'
 
 export type Link = { a: string; b: string }
 
@@ -18,7 +19,7 @@ export const useLinks = create<LinksState>((set, get) => ({
 
   fetchLinks: async () => {
     try {
-      const res = await fetch('/api/links')
+      const res = await fetch(apiUrl('/api/links'))
       if (res.ok) set({ links: (await res.json()) as Link[] })
     } catch {
       // server unreachable — strip stays LOS via the events store
@@ -29,7 +30,7 @@ export const useLinks = create<LinksState>((set, get) => ({
 
   createLink: async (a, b) => {
     if (a === b || get().isLinked(a, b)) return
-    const res = await fetch('/api/links', {
+    const res = await fetch(apiUrl('/api/links'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ a, b }),
@@ -38,7 +39,7 @@ export const useLinks = create<LinksState>((set, get) => ({
   },
 
   dropLink: async (a, b) => {
-    const res = await fetch('/api/links', {
+    const res = await fetch(apiUrl('/api/links'), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ a, b }),

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { apiUrl } from '../lib/api'
 
 type McpInfo = { name: string; type: string; detail: string }
 type SkillInfo = { name: string; description: string }
@@ -12,7 +13,7 @@ export const EnvInfo = () => {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    void fetch('/api/environment')
+    void fetch(apiUrl('/api/environment'))
       .then(r => (r.ok ? (r.json() as Promise<Environment>) : null))
       .then(e => e && setEnv(e))
       .catch(() => undefined)

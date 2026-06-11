@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { AgentMeta } from '@mc/shared'
+import { apiUrl } from '../lib/api'
 import { useStatus } from './statusStore'
 
 type AgentsState = {
@@ -18,7 +19,7 @@ export const useAgents = create<AgentsState>((set, get) => ({
 
   fetchAgents: async () => {
     try {
-      const res = await fetch('/api/agents')
+      const res = await fetch(apiUrl('/api/agents'))
       if (!res.ok) throw new Error(String(res.status))
       const agents = (await res.json()) as AgentMeta[]
       useStatus.getState().seed(agents)
@@ -34,7 +35,7 @@ export const useAgents = create<AgentsState>((set, get) => ({
   // Returns an error string for the dialog, or undefined on success.
   spawnAgent: async (agent, repoDir) => {
     try {
-      const res = await fetch('/api/agents', {
+      const res = await fetch(apiUrl('/api/agents'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agent, repoDir }),
@@ -51,7 +52,7 @@ export const useAgents = create<AgentsState>((set, get) => ({
   },
 
   killAgent: async agent => {
-    await fetch(`/api/agents/${encodeURIComponent(agent)}`, { method: 'DELETE' }).catch(() => undefined)
+    await fetch(apiUrl(`/api/agents/${encodeURIComponent(agent)}`), { method: 'DELETE' }).catch(() => undefined)
     await get().fetchAgents()
   },
 }))
