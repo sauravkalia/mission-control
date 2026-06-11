@@ -24,4 +24,8 @@ export const mocrTermTheme: ITheme = {
   brightCyan: '#79D9C6',
   white: '#B9C7BD',
   brightWhite: '#E8F2EA',
+  // xterm 6 rewrote the scrollbar — theme it or it ships stock (gotcha 50)
+  scrollbarSliderBackground: 'rgba(81, 240, 138, 0.10)',
+  scrollbarSliderHoverBackground: 'rgba(81, 240, 138, 0.18)',
+  scrollbarSliderActiveBackground: 'rgba(81, 240, 138, 0.25)',
 }

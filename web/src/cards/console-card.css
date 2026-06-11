@@ -1,11 +1,7 @@
 .console-card {
-  position: absolute;
-  top: 96px;
-  left: 96px;
-  width: 920px;
-  height: 560px;
-  min-width: 320px;
-  min-height: 220px;
+  /* react-rnd owns position and size; the card fills its window */
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
@@ -14,8 +10,6 @@
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.55),
     0 2px 8px rgba(0, 0, 0, 0.5);
-  /* M0: CSS resize stands in for the M1 window manager */
-  resize: both;
   overflow: hidden;
 }
 
@@ -66,15 +60,95 @@
 }
 
 .repo-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
   font-size: 11px;
   color: var(--ink-mid);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* the path truncates; the `· mc-<cs>` suffix (what you type to attach) survives */
+.repo-label .repo-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .repo-label .session-suffix {
+  flex: none;
   color: var(--ink-low);
+}
+
+.card-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.card-btn {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: var(--ink-low);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.card-btn:hover {
+  color: var(--ink-hi);
+  background: var(--bg-raised);
+}
+
+/* hold-to-kill: fills left-to-right like an arming switch over 600ms */
+.kill-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: var(--st-los);
+  opacity: 0.45;
+}
+
+.kill-btn.arming::before {
+  width: 100%;
+  transition: width var(--t-base) linear;
+}
+
+.kill-btn.arming {
+  color: var(--ink-hi);
+}
+
+.copy-toast {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 4px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink-mid);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  animation: toast-in var(--t-fast) var(--ease-out);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .term-well {

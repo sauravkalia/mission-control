@@ -8,6 +8,7 @@ import '@xterm/xterm/css/xterm.css'
 import './console-card.css'
 
 const RETRY_MS = 1500
+const COPY_FLASH_MS = 1200
 
 type LinkState = 'connecting' | 'up' | 'lost'
 
@@ -15,11 +16,53 @@ type ConsoleCardProps = {
   callsign: string
   session: string
   repoLabel: string
+  dead: boolean
+  onMinimize: () => void
+  onKill: () => void
 }
 
-export const ConsoleCard = ({ callsign, session, repoLabel }: ConsoleCardProps) => {
+const KILL_HOLD_MS = 600
+
+// Killing terminates a real tmux session — the button arms like a switch:
+// hold 600ms while it fills, release early to cancel.
+const KillButton = ({ onKill }: { onKill: () => void }) => {
+  const timer = useRef<number | undefined>(undefined)
+  const [arming, setArming] = useState(false)
+
+  const start = () => {
+    setArming(true)
+    timer.current = window.setTimeout(onKill, KILL_HOLD_MS)
+  }
+  const cancel = () => {
+    setArming(false)
+    window.clearTimeout(timer.current)
+  }
+
+  return (
+    <button
+      type="button"
+      className={`card-btn kill-btn${arming ? ' arming' : ''}`}
+      title="hold to kill session"
+      onPointerDown={start}
+      onPointerUp={cancel}
+      onPointerLeave={cancel}
+    >
+      ×
+    </button>
+  )
+}
+
+export const ConsoleCard = ({ callsign, session, repoLabel, dead, onMinimize, onKill }: ConsoleCardProps) => {
   const hostRef = useRef<HTMLDivElement>(null)
   const [link, setLink] = useState<LinkState>('connecting')
+  const [copied, setCopied] = useState(false)
+
+  const copyAttach = () => {
+    void navigator.clipboard.writeText(`tmux attach -t ${session}`).then(() => {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), COPY_FLASH_MS)
+    })
+  }
 
   useEffect(() => {
     const host = hostRef.current
@@ -86,6 +129,8 @@ export const ConsoleCard = ({ callsign, session, repoLabel }: ConsoleCardProps) 
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
+        // display:none while minimized — fitting a zero-size host computes garbage
+        if (host.clientWidth === 0 || host.clientHeight === 0) return
         fit.fit()
         send({ type: 'resize', cols: term.cols, rows: term.rows })
       })
@@ -103,19 +148,32 @@ export const ConsoleCard = ({ callsign, session, repoLabel }: ConsoleCardProps) 
     }
   }, [session])
 
+  // LOS means "tmux session gone" only (Design.md §1) — socket drops are
+  // communicated by the link overlay, not the annunciator.
+  const annunciator = dead ? 'LOS' : 'GO'
+
   return (
     <section className={`console-card link-${link}`}>
       <header className="card-titlebar">
-        <span className={`annunciator ${link === 'up' ? 'st-go' : 'st-los'}`}>
-          {link === 'up' ? 'GO' : 'LOS'}
-        </span>
+        <span className={`annunciator ${annunciator === 'GO' ? 'st-go' : 'st-los'}`}>{annunciator}</span>
         <span className="callsign">{callsign}</span>
         <span className="repo-label">
-          {repoLabel} <span className="session-suffix">· {session}</span>
+          <span className="repo-path">{repoLabel}</span>
+          <span className="session-suffix">· {session}</span>
+        </span>
+        <span className="card-actions">
+          <button type="button" className="card-btn" title="copy tmux attach command" onClick={copyAttach}>
+            {copied ? '✓' : '⧉'}
+          </button>
+          <button type="button" className="card-btn" title="minimize to dock" onClick={onMinimize}>
+            –
+          </button>
+          <KillButton onKill={onKill} />
         </span>
       </header>
       <div className="term-well">
         <div className="term-host" ref={hostRef} />
+        {copied && <div className="copy-toast">COPIED — ATTACH FROM ANY TERMINAL</div>}
         {link !== 'up' && (
           <div className="link-overlay">
             {link === 'lost' ? 'LINK LOST — RETRYING' : 'ACQUIRING LINK…'}

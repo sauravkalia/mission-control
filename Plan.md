@@ -32,11 +32,16 @@ Repo: `/Users/Saurav/Documents/GitHub/mission-control`. Solo, fun, local-only. T
 
 **tmux bridge.** Each agent is a tmux session on the *default socket* named `mc-<agent>`, created detached with claude as the direct-argv session command — no `sh -c` layer anywhere (`execFile('tmux',…)` → tmux 3.4+ executes multi-argument commands directly, without `sh -c`), which means **no `~` expansion either**: every path in spawn argv must be absolute, enforced as a rule in `tmux.ts`. The settings path is built with `path.join(os.homedir(), '.mission-control', 'mc-hooks.json')` — a literal `~/…` would reach claude verbatim and die with "Settings file not found" (same reason the claude binary path is already absolute):
 ```sh
-tmux new-session -d -s mc-<agent> -c <repoDir> -x 220 -y 50 \
+# first spawn only: server-wide globals chained BEFORE new-session — history-limit
+# is captured at pane creation, applying it after leaves agent #1 with 2000 lines
+tmux start-server \; set -as terminal-features ',xterm-256color:RGB' \
+  \; set -g history-limit 50000 \; set -g window-size latest \; set -g focus-events on \
+  \; new-session -d -s mc-<agent> -c <repoDir> -x 220 -y 50 \
   -e MC_AGENT_NAME=<agent> -e MC_PORT=4711 \
   /Users/Saurav/.local/bin/claude --session-id <uuid> \
     --settings /Users/Saurav/.mission-control/mc-hooks.json \
-  \; set-option -t =mc-<agent> remain-on-exit on
+  \; set-option -w -t '=mc-<agent>:' remain-on-exit on \
+  \; set-option -t '=mc-<agent>:' status off
 ```
 The trailing `\;` (a lone `;` argv token from execFile) chains `set-option` into the *same* tmux invocation as `new-session`, so `remain-on-exit on` lands atomically — an instantly-crashing claude can't destroy the session before the option arrives. A dead pane then stays visible: EXITED badge via `#{pane_dead}` poll, one-click restart via `respawn-pane -k` *with an explicit fresh command* (new `--session-id` — claude refuses a uuid that already has a transcript) instead of vanishing from `tmux ls`. Spawn also writes `{agent, sessionId, repoDir, spawnedAt}` into `~/.mission-control/agents.json`; on boot the server reloads it and reconciles against `tmux ls -f '#{m:mc-*,#{session_name}}'` — adopting surviving sessions, dropping entries with no session — because `tsx watch` restarts the server on every file save and the sessions outliving the server is the whole point of the architecture. (This re-adopts only mc-prefixed sessions the server itself spawned — *not* the parked attach-everything mode.) After the first spawn (which auto-starts the tmux server — never pre-start it), apply globals once: `set -as terminal-features ',xterm-256color:RGB'`, `set -g history-limit 50000`, `set -g window-size latest` (default since 3.1, set for self-documentation), `set -g focus-events on`. Every targeted command uses exact-match `=mc-<name>` (prefix-matching gotcha). Control plane (`new-session`/`ls`/`kill`/`capture-pane`/`display-message`/buffer injection) is plain `execFile('tmux', [...])` — no PTY needed. Text injection goes through `load-buffer -` + `paste-buffer -p -d` (bracketed paste, immune to semicolons/newlines), then a *separate* `send-keys ... Enter` after ~300ms.
 
@@ -159,7 +164,7 @@ tmux attach -t mc-sphere-web
 
 ### M1 — CONSOLES (the fleet)
 **Goal:** spawn/list/kill agents from the UI; cards become real MOCR windows; the fleet survives server restarts.
-- Control-plane API: spawn (locked command incl. `--session-id <uuid>`, absolute `--settings` path, `-e` env tags, `\; set-option remain-on-exit on` chained atomically), `list-sessions -f '#{m:mc-*,#{session_name}}' -F …` (exit 1 = zero sessions), kill; spawn dialog with repo path + agent name.
+- Control-plane API: spawn (locked command incl. `--session-id <uuid>`, absolute `--settings` path, `-e` env tags, `\; set-option remain-on-exit on` + `status off` chained atomically, first-spawn globals chained before new-session), list via `list-panes -a -F '#{session_name}\t#{pane_dead}'` + JS `mc-` filter (substituted for the planned `list-sessions -f` form — one call yields pane_dead too; exit 1 = zero sessions), kill; spawn dialog with repo path + agent name.
 - Spawn error path: validate the repo path server-side (`fs.stat`) before spawning; surface tmux's stderr in the spawn dialog on nonzero exit; one post-spawn `has-session` + `pane_dead` poll (~1s) catches instant death → plain "agent died on launch" card state (the full EXITED badge is M2).
 - Registry persistence: write `~/.mission-control/agents.json` at spawn (`{agent, sessionId, repoDir, spawnedAt}`); on server boot, reload it and reconcile against `tmux ls -f '#{m:mc-*,#{session_name}}'` — adopt surviving sessions, drop entries with no session (free dead/stale-session cleanup). `tsx watch` restarts the server on every save; without this, live agents become orphans and M2's hook mapping breaks. This is *not* the parked attach-everything mode — only mc-* sessions this server spawned are re-adopted.
 - Server boot ensures `~/.mission-control/mc-hooks.json` exists (copied from `setup/mc-hooks.json`, or a `{}` stub until M2 finalizes the template) so the locked `--settings` argv is valid from M1 onward.

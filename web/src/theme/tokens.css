@@ -20,8 +20,19 @@
   --st-actn: #ffb000;
   --st-stby: #6f8378;
   --st-los: #ff4d3d;
+  --flash-white: #bfffd6;
 
   --font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* motion language — Design.md §6 */
+  --t-fast: 120ms;
+  --t-handoff: 150ms;
+  --t-norm: 200ms;
+  --t-slow: 320ms;
+  --t-base: 600ms;
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
 * {
@@ -42,15 +53,18 @@ body {
   font-size: 12px;
 }
 
-/* Ground-track graticule: minor 48px / major 240px grid + edge vignette */
+/* Ground-track graticule: minor 48px / major 240px grid, `+` registration
+   crosshairs at major intersections, edge vignette */
 .canvas {
   position: relative;
   height: 100%;
   overflow: hidden;
   background-image:
     radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.08) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cpath d='M120 115v10M115 120h10' stroke='rgba(81,240,138,0.05)' stroke-width='1'/%3E%3C/svg%3E"),
     repeating-linear-gradient(0deg, rgba(81, 240, 138, 0.07) 0 1px, transparent 1px 240px),
     repeating-linear-gradient(90deg, rgba(81, 240, 138, 0.07) 0 1px, transparent 1px 240px),
     repeating-linear-gradient(0deg, rgba(81, 240, 138, 0.035) 0 1px, transparent 1px 48px),
     repeating-linear-gradient(90deg, rgba(81, 240, 138, 0.035) 0 1px, transparent 1px 48px);
+  background-position: 0 0, -120px -120px, 0 0, 0 0, 0 0, 0 0;
 }

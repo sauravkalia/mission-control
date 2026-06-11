@@ -1,4 +1,8 @@
 import { execFile } from 'node:child_process'
+import { accessSync, constants } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import { sessionNameFor } from '@mc/shared'
 
 // Every target uses exact-match `=name` — bare `-t mc-sphere` would
 // prefix-match `mc-sphere-web`. No `~` in any argv: there is no shell
@@ -6,12 +10,93 @@ import { execFile } from 'node:child_process'
 //
 // Target syntax (verified on tmux 3.6b): session-target commands
 // (has-session, attach-session, kill-session) take `=name`; pane/window-target
-// commands (capture-pane, display-message, send-keys, respawn-pane) need
-// `=name:` — bare `=name` fails there with "can't find pane".
+// commands (capture-pane, display-message, send-keys, respawn-pane, set-option)
+// need `=name:` — bare `=name` fails there with "can't find pane".
 
-export const hasSession = (name: string): Promise<boolean> =>
+const tmux = (args: string[]): Promise<{ ok: boolean; stdout: string; stderr: string }> =>
   new Promise(resolve => {
-    execFile('tmux', ['has-session', '-t', `=${name}`], error => {
-      resolve(error === null)
+    execFile('tmux', args, (error, stdout, stderr) => {
+      resolve({ ok: error === null, stdout, stderr })
     })
   })
+
+export const hasSession = (name: string): Promise<boolean> =>
+  tmux(['has-session', '-t', `=${name}`]).then(r => r.ok)
+
+export const resolveClaudeBin = (): string => {
+  const fallback = join(homedir(), '.local', 'bin', 'claude')
+  for (const candidate of [fallback]) {
+    try {
+      accessSync(candidate, constants.X_OK)
+      return candidate
+    } catch {
+      // try next
+    }
+  }
+  throw new Error(`claude binary not found at ${fallback}`)
+}
+
+type SpawnArgs = {
+  agent: string
+  repoDir: string
+  sessionId: string
+  claudeBin: string
+  hooksPath: string
+  port: number
+  withGlobals: boolean
+}
+
+// Locked argv (Plan.md): absolute paths only, server-chosen --session-id,
+// remain-on-exit chained atomically so an instantly-crashing claude still
+// leaves a visible dead pane instead of vanishing from `tmux ls`.
+// On the first spawn the server-wide globals are chained BEFORE new-session
+// (history-limit is captured at pane creation — applying it after the first
+// spawn would leave the first agent with the 2000-line default).
+export const spawnAgentSession = ({ agent, repoDir, sessionId, claudeBin, hooksPath, port, withGlobals }: SpawnArgs) => {
+  const session = sessionNameFor(agent)
+  const globals = withGlobals
+    ? [
+        'start-server', ';',
+        'set', '-as', 'terminal-features', ',xterm-256color:RGB', ';',
+        'set', '-g', 'history-limit', '50000', ';',
+        'set', '-g', 'window-size', 'latest', ';',
+        'set', '-g', 'focus-events', 'on', ';',
+      ]
+    : []
+  return tmux([
+    ...globals,
+    'new-session', '-d', '-s', session, '-c', repoDir, '-x', '220', '-y', '50',
+    '-e', `MC_AGENT_NAME=${agent}`, '-e', `MC_PORT=${String(port)}`,
+    claudeBin, '--session-id', sessionId, '--settings', hooksPath,
+    ';',
+    'set-option', '-w', '-t', `=${session}:`, 'remain-on-exit', 'on',
+    ';',
+    'set-option', '-t', `=${session}:`, 'status', 'off',
+  ])
+}
+
+export const killSession = (name: string): Promise<boolean> =>
+  tmux(['kill-session', '-t', `=${name}`]).then(r => r.ok)
+
+// session name → pane_dead, for every live mc-* session.
+// `tmux list-panes` exits 1 when no tmux server runs — that just means zero sessions.
+export const listMcSessions = async (): Promise<Map<string, { dead: boolean }>> => {
+  const result = await tmux(['list-panes', '-a', '-F', '#{session_name}\t#{pane_dead}'])
+  const map = new Map<string, { dead: boolean }>()
+  if (!result.ok) return map
+  for (const line of result.stdout.split('\n')) {
+    const [name, dead] = line.split('\t')
+    if (name?.startsWith('mc-')) map.set(name, { dead: dead === '1' })
+  }
+  return map
+}
+
+export const capturePaneTail = async (name: string, lines = 15): Promise<string> => {
+  const result = await tmux(['capture-pane', '-p', '-t', `=${name}:`])
+  if (!result.ok) return ''
+  return result.stdout
+    .split('\n')
+    .filter(l => l.trim() !== '')
+    .slice(-lines)
+    .join('\n')
+}
