@@ -1,11 +1,15 @@
 import { create } from 'zustand'
+import type { VaultStats } from '@mc/shared'
 import { useLinks } from './linksStore'
+import { useVault } from './vaultStore'
 
 export type PullEvent = { from: string; to: string; bytes: number; at: number }
+export type IngestEvent = { delta: number; at: number }
 
 type EventsState = {
   baseLive: boolean
   lastPull: PullEvent | null
+  lastIngest: IngestEvent | null
   connect: () => () => void
 }
 
@@ -14,6 +18,7 @@ const HEARTBEAT_GRACE_MS = 12_000
 export const useEvents = create<EventsState>((set) => ({
   baseLive: false,
   lastPull: null,
+  lastIngest: null,
 
   connect: () => {
     let ws: WebSocket | undefined
@@ -36,6 +41,8 @@ export const useEvents = create<EventsState>((set) => ({
           | { type: 'pull'; from: string; to: string; bytes: number; at: number }
           | { type: 'links-changed' }
           | { type: 'heartbeat'; at: number }
+          | { type: 'vault'; stats: VaultStats }
+          | { type: 'ingest'; delta: number; at: number }
         if (event.type === 'heartbeat') {
           set({ baseLive: true })
           armBeat()
@@ -44,6 +51,10 @@ export const useEvents = create<EventsState>((set) => ({
           armBeat()
         } else if (event.type === 'links-changed') {
           void useLinks.getState().fetchLinks()
+        } else if (event.type === 'vault') {
+          useVault.getState().setStats(event.stats)
+        } else if (event.type === 'ingest') {
+          set({ lastIngest: { delta: event.delta, at: event.at } })
         }
       }
       sock.onclose = () => {

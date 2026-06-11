@@ -5,6 +5,7 @@ import { agentsRouter, bootRegistry, isKnownSession } from './agents'
 import { readEnvironment } from './environment'
 import { addEventClient, startHeartbeat } from './events'
 import { handleMcp } from './mcp'
+import { startVaultPolling, vaultStats } from './vault'
 import { attachRelay } from './relay'
 import { ensureMcDir } from './registry'
 import { hasSession } from './tmux'
@@ -63,6 +64,9 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/environment', (_req, res) => {
   res.json(readEnvironment())
 })
+app.get('/api/vault', (_req, res) => {
+  res.json(vaultStats())
+})
 app.use('/api', agentsRouter())
 app.all('/mcp', mcpGuard, handleMcp)
 
@@ -105,6 +109,7 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 startHeartbeat()
+startVaultPolling()
 
 server.listen(PORT, HOST, () => {
   console.log(`[mc] uplink on http://${HOST}:${PORT}`)

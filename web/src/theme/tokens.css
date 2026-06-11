@@ -21,6 +21,8 @@
   --st-stby: #6f8378;
   --st-los: #ff4d3d;
   --flash-white: #bfffd6;
+  --vault-accent: #56bfae;
+  --vault-glow: rgba(86, 191, 174, 0.55);
 
   --font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 

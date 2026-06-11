@@ -59,6 +59,114 @@
   filter: drop-shadow(0 0 5px rgba(81, 240, 138, 0.9));
 }
 
+.mc-pulse.vault {
+  fill: var(--vault-accent);
+  filter: drop-shadow(0 0 5px var(--vault-glow));
+}
+
+/* ── AgentVault data core node ── */
+.vault-node {
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 12px 10px;
+  background: radial-gradient(ellipse at 50% 30%, rgba(86, 191, 174, 0.12), var(--bg-card) 70%);
+  border: 1px solid var(--vault-accent);
+  border-radius: 6px;
+  box-shadow: 0 0 18px rgba(86, 191, 174, 0.18), 0 12px 32px rgba(0, 0, 0, 0.5);
+  user-select: none;
+}
+
+.vault-node.offline {
+  border-color: var(--line);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.vault-node.ingesting {
+  box-shadow: 0 0 28px var(--vault-glow), 0 12px 32px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 120ms var(--ease-out);
+}
+
+.vault-port {
+  border-color: var(--vault-accent);
+}
+
+.vault-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.vault-glyph {
+  font-size: 26px;
+  color: var(--vault-accent);
+  text-shadow: 0 0 10px var(--vault-glow);
+}
+
+.vault-node.ingesting .vault-glyph {
+  animation: vault-spin 0.9s var(--ease-out);
+}
+
+@keyframes vault-spin {
+  from {
+    transform: scale(1.25);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.vault-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--ink-hi);
+}
+
+.vault-sub {
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--vault-accent);
+}
+
+.vault-stats {
+  display: flex;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line-dim);
+  width: 100%;
+  justify-content: center;
+}
+
+.vault-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.vault-num {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-hi);
+}
+
+.vault-label {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: var(--ink-low);
+  text-transform: uppercase;
+}
+
+.vault-foot {
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  color: var(--ink-low);
+}
+
 /* ── React Flow controls, dark ── */
 .react-flow__controls {
   border: 1px solid var(--line);

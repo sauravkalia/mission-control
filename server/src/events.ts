@@ -1,12 +1,15 @@
+import type { VaultStats } from '@mc/shared'
 import type { WebSocket } from 'ws'
 
-// Server → client event channel feeding THE PLOT: status, links, and the
-// hero moment — a context pull flying across a wire.
+// Server → client event channel feeding the canvas: status, links, the hero
+// pull animation, and the AgentVault data-core (live stats + ingest).
 
 export type McEvent =
   | { type: 'pull'; from: string; to: string; bytes: number; at: number }
   | { type: 'links-changed' }
   | { type: 'heartbeat'; at: number }
+  | { type: 'vault'; stats: VaultStats }
+  | { type: 'ingest'; delta: number; at: number }
 
 const clients = new Set<WebSocket>()
 
@@ -29,6 +32,8 @@ const nextAt = (): number => (monotonic += 1)
 
 export const emitPull = (from: string, to: string, bytes: number): void =>
   emit({ type: 'pull', from, to, bytes, at: nextAt() })
+
+export const emitIngest = (delta: number): void => emit({ type: 'ingest', delta, at: nextAt() })
 
 export const emitLinksChanged = (): void => emit({ type: 'links-changed' })
 

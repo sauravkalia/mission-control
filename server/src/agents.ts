@@ -3,7 +3,7 @@ import { statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Router } from 'express'
-import { AGENT_NAME_RE, sessionNameFor, type AgentMeta, type SpawnRequest } from '@mc/shared'
+import { AGENT_NAME_RE, sessionNameFor, VAULT_ID, type AgentMeta, type SpawnRequest } from '@mc/shared'
 import { emitLinksChanged } from './events'
 import { addLink, listLinks, pruneLinks, removeLink } from './links'
 import { hooksFilePath, loadRegistry, saveRegistry, type AgentRecord } from './registry'
@@ -98,8 +98,10 @@ export const agentsRouter = (): Router => {
       res.status(400).json({ error: 'two distinct callsigns required' })
       return
     }
-    if (!registry.some(r => r.agent === a) || !registry.some(r => r.agent === b)) {
-      res.status(404).json({ error: 'both agents must be on console' })
+    // an endpoint is valid if it's a live agent or the vault data core
+    const valid = (id: string): boolean => id === VAULT_ID || registry.some(r => r.agent === id)
+    if (!valid(a) || !valid(b)) {
+      res.status(404).json({ error: 'both endpoints must be on console' })
       return
     }
     addLink(a, b)

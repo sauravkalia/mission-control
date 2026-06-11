@@ -8,6 +8,7 @@ import { TelemetryStrip } from './app/TelemetryStrip'
 import { useAgents } from './stores/agentsStore'
 import { useEvents } from './stores/eventsStore'
 import { useLinks } from './stores/linksStore'
+import { useVault } from './stores/vaultStore'
 import './app/app.css'
 
 const AGENTS_POLL_MS = 5000
@@ -17,15 +18,17 @@ export const App = () => {
   const loaded = useAgents(s => s.loaded)
   const fetchAgents = useAgents(s => s.fetchAgents)
   const fetchLinks = useLinks(s => s.fetchLinks)
+  const fetchVault = useVault(s => s.fetchVault)
   const connectEvents = useEvents(s => s.connect)
   const [spawnOpen, setSpawnOpen] = useState(false)
 
   useEffect(() => {
     void fetchAgents()
     void fetchLinks()
+    void fetchVault()
     const t = window.setInterval(() => void fetchAgents(), AGENTS_POLL_MS)
     return () => window.clearInterval(t)
-  }, [fetchAgents, fetchLinks])
+  }, [fetchAgents, fetchLinks, fetchVault])
 
   useEffect(() => connectEvents(), [connectEvents])
 

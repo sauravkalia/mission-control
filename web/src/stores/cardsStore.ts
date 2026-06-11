@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { VAULT_ID } from '@mc/shared'
 
 export type CardGeom = {
   x: number
@@ -41,7 +42,7 @@ export const useCards = create<CardsState>()(
       // Drop geometry for agents that no longer exist — pairs with the server's
       // boot reconcile, so a reload never resurrects ghost cards.
       reconcile: liveAgents => {
-        const live = new Set(liveAgents)
+        const live = new Set([...liveAgents, VAULT_ID]) // the vault is permanent
         const stale = Object.keys(get().cards).filter(a => !live.has(a))
         if (stale.length === 0) return
         set(s => {

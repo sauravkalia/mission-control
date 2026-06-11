@@ -4,6 +4,7 @@ export type PulseEdgeData = {
   heat: number
   pulseNonce: number
   reverse: boolean
+  vault?: boolean
 }
 
 // A standing link wire. On each memory pull a glowing packet travels along it
@@ -21,16 +22,17 @@ export const PulseEdge = ({
   const [path] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition })
   const d = (data ?? {}) as PulseEdgeData
   const heat = d.heat ?? 0
+  const color = d.vault ? 'var(--vault-accent)' : 'var(--phos-green)'
 
   return (
     <>
       <BaseEdge
         id={id}
         path={path}
-        style={{ stroke: 'var(--phos-green)', strokeWidth: 1.5, strokeDasharray: '4 4', opacity: 0.3 + heat }}
+        style={{ stroke: color, strokeWidth: 1.5, strokeDasharray: '4 4', opacity: 0.3 + heat }}
       />
       {d.pulseNonce > 0 && (
-        <circle key={d.pulseNonce} r={4} className="mc-pulse">
+        <circle key={d.pulseNonce} r={4} className={d.vault ? 'mc-pulse vault' : 'mc-pulse'}>
           <animateMotion
             dur="0.9s"
             path={path}

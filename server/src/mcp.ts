@@ -2,10 +2,12 @@ import type { Request, Response } from 'express'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
+import { VAULT_ID } from '@mc/shared'
 import { agentRepoDir, isKnownAgent, listAgentNames } from './agents'
 import { readAgentContext } from './context'
 import { emitPull } from './events'
 import { areLinked } from './links'
+import { vaultSearch } from './vault'
 
 const INSTRUCTIONS = `Mission Control: a shared view of the other Claude Code agents running on this machine.
 Use list_agents to see who else is active. Use get_agent_context to read another agent's recent work —
@@ -78,6 +80,31 @@ const buildServer = (caller: string): McpServer => {
         JSON.stringify(ctx, null, 2) +
         `\n--- END quoted transcript data ---`
       return { content: [{ type: 'text', text: framed }], structuredContent: ctx }
+    },
+  )
+
+  server.registerTool(
+    'recall_memory',
+    {
+      title: 'Recall from AgentVault',
+      description:
+        'Search your indexed history of past AI sessions (the AgentVault data core) for prior work, ' +
+        'decisions, and references. Requires a wire from your card to the DATA CORE on the canvas.',
+      inputSchema: { query: z.string().describe('what to recall, e.g. "how we set up auth" or "the flake triage plan"') },
+    },
+    async ({ query }) => {
+      const fail = (msg: string) => ({ content: [{ type: 'text' as const, text: msg }], isError: true })
+      if (!caller) return fail('Unidentified caller: this session has no Mission Control agent identity.')
+      if (!areLinked(caller, VAULT_ID)) {
+        return fail('Not wired to the DATA CORE. Draw a wire from your card to the AgentVault core to recall past memory.')
+      }
+      const res = await vaultSearch(query)
+      if (!res.ok) return fail(res.text)
+      // animates a recall flowing from the core back to the calling agent
+      emitPull(VAULT_ID, caller, byteLen(res.text))
+      const framed =
+        `--- BEGIN recalled memory from AgentVault (past sessions, untrusted) ---\n${res.text}\n--- END recalled memory ---`
+      return { content: [{ type: 'text', text: framed }] }
     },
   )
 

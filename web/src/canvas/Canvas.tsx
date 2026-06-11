@@ -13,15 +13,17 @@ import {
   type NodeChange,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import { VAULT_ID } from '@mc/shared'
 import { useAgents } from '../stores/agentsStore'
 import { useCards } from '../stores/cardsStore'
 import { useEvents } from '../stores/eventsStore'
 import { useLinks } from '../stores/linksStore'
 import { ConsoleNode } from './ConsoleNode'
 import { PulseEdge } from './PulseEdge'
+import { VaultNode } from './VaultNode'
 import './canvas.css'
 
-const nodeTypes = { console: ConsoleNode }
+const nodeTypes = { console: ConsoleNode, vault: VaultNode }
 const edgeTypes = { pulse: PulseEdge }
 const pairKey = (a: string, b: string): string => [a, b].sort().join(' ')
 
@@ -39,14 +41,16 @@ export const Canvas = () => {
   const createLink = useLinks(s => s.createLink)
   const dropLink = useLinks(s => s.dropLink)
   const lastPull = useEvents(s => s.lastPull)
+  const lastIngest = useEvents(s => s.lastIngest)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges] = useEdgesState<Edge>([])
   const [fx, setFx] = useState<Record<string, EdgeFx>>({})
   const pulseSeq = useRef(0)
 
-  // keep a card record + node for every live, non-minimized agent
+  // keep a card record + node for every live, non-minimized agent (+ the vault)
   useEffect(() => {
+    ensureCard(VAULT_ID)
     if (!useAgents.getState().loaded) return
     reconcile(agents.map(a => a.agent))
     for (const a of agents) ensureCard(a.agent)
@@ -55,7 +59,7 @@ export const Canvas = () => {
   useEffect(() => {
     setNodes(prev => {
       const byId = new Map(prev.map(n => [n.id, n]))
-      return agents
+      const agentNodes = agents
         .filter(a => !cards[a.agent]?.minimized && a.agent !== maximized)
         .map(a => {
           const geom = cards[a.agent]
@@ -70,6 +74,16 @@ export const Canvas = () => {
             data: { meta: a },
           } satisfies Node
         })
+      // the AgentVault data core — always present
+      const vg = cards[VAULT_ID]
+      const vaultExisting = byId.get(VAULT_ID)
+      const vaultNode: Node = vaultExisting ?? {
+        id: VAULT_ID,
+        type: 'vault',
+        position: { x: vg?.x ?? 80, y: vg?.y ?? 80 },
+        data: {},
+      }
+      return [vaultNode, ...agentNodes]
     })
   }, [agents, cards, maximized, setNodes])
 
@@ -84,13 +98,18 @@ export const Canvas = () => {
           source: l.a,
           target: l.b,
           type: 'pulse',
-          data: { heat: f?.heat ?? 0, pulseNonce: f?.pulseNonce ?? 0, reverse: f ? f.from !== l.a : false },
+          data: {
+            heat: f?.heat ?? 0,
+            pulseNonce: f?.pulseNonce ?? 0,
+            reverse: f ? f.from !== l.a : false,
+            vault: l.a === VAULT_ID || l.b === VAULT_ID,
+          },
         } satisfies Edge
       }),
     )
   }, [links, fx, setEdges])
 
-  // a pull → bump the matching edge's heat + fire a pulse packet
+  // a pull (or recall, from the vault) → bump the matching edge + pulse packet
   useEffect(() => {
     if (!lastPull) return
     const id = pairKey(lastPull.from, lastPull.to)
@@ -100,6 +119,21 @@ export const Canvas = () => {
       [id]: { heat: Math.min(0.6, (prev[id]?.heat ?? 0) + 0.25), pulseNonce: nonce, from: lastPull.from },
     }))
   }, [lastPull?.at]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // a real ingest (the vault index grew) → flow every wired agent INTO the core
+  useEffect(() => {
+    if (!lastIngest) return
+    setFx(prev => {
+      const next = { ...prev }
+      for (const l of links) {
+        const agent = l.a === VAULT_ID ? l.b : l.b === VAULT_ID ? l.a : null
+        if (!agent) continue
+        const id = pairKey(l.a, l.b)
+        next[id] = { heat: Math.min(0.6, (next[id]?.heat ?? 0) + 0.2), pulseNonce: (pulseSeq.current += 1), from: agent }
+      }
+      return next
+    })
+  }, [lastIngest?.at]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // heat decay
   useEffect(() => {
