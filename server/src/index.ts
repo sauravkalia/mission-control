@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import express, { type RequestHandler } from 'express'
 import { WebSocketServer } from 'ws'
 import { agentsRouter, bootRegistry, isKnownSession } from './agents'
+import { PORT, WEB_PORT } from './config'
 import { readEnvironment } from './environment'
 import { addEventClient, startHeartbeat } from './events'
 import { handleMcp } from './mcp'
@@ -11,21 +12,22 @@ import { attachRelay } from './relay'
 import { ensureMcDir } from './registry'
 import { hasSession } from './tmux'
 
-const PORT = 4711
 const HOST = '127.0.0.1'
 const TERM_PATH = /^\/ws\/term\/([A-Za-z0-9_-]+)$/
 const EVENTS_PATH = '/ws/events'
 // Browsers do NOT enforce same-origin on WebSockets — without this check any
 // website could drive the pty from the user's browser. Vite's proxy forwards
 // the browser's real Origin unchanged.
-const ALLOWED_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173'])
+const ALLOWED_ORIGINS = new Set([`http://localhost:${WEB_PORT}`, `http://127.0.0.1:${WEB_PORT}`])
 
 // POST /api/agents launches claude in an arbitrary directory — it must never
 // be reachable from a hostile web page. Host check closes DNS rebinding
 // (rebound requests carry Host: evil.com:4711); Origin check closes CSRF from
 // loopback origins. Browsers always send Origin on POST/DELETE; absent Origin
 // means curl/scripts run by the local user, which are in-trust.
-const LOOPBACK_HOSTS = new Set(['127.0.0.1:4711', 'localhost:4711', '127.0.0.1:5173', 'localhost:5173'])
+const LOOPBACK_HOSTS = new Set([
+  `127.0.0.1:${PORT}`, `localhost:${PORT}`, `127.0.0.1:${WEB_PORT}`, `localhost:${WEB_PORT}`,
+])
 
 const apiGuard: RequestHandler = (req, res, next) => {
   if (!LOOPBACK_HOSTS.has(req.headers.host ?? '')) {
@@ -119,7 +121,7 @@ let shuttingDown = false
 const shutdown = () => {
   if (shuttingDown) return
   shuttingDown = true
-  clearInterval(vaultPoll)
+  if (vaultPoll) clearInterval(vaultPoll)
   clearInterval(statusPoll)
   void closeVault().finally(() => process.exit(0))
 }

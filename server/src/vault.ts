@@ -1,15 +1,15 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import type { VaultStats } from '@mc/shared'
+import { resolveVaultCommand } from './config'
 import { emit, emitIngest } from './events'
 
 // Mission Control's own connection to AgentVault (the data core). The Node
 // server spawns a second agentvault MCP instance over stdio — verified safe to
 // run concurrently with Claude Code's (SQLite reads). Used for live stats,
-// ingest detection, and proxying recall from wired agents.
+// ingest detection, and proxying recall from wired agents. AgentVault is
+// OPTIONAL: when it isn't installed/configured the core just stays offline.
 
-const COMMAND = '/opt/anaconda3/bin/python3'
-const ARGS = ['-m', 'agentvault.mcp_server']
 const POLL_MS = 10_000
 
 let client: Client | null = null
@@ -29,14 +29,15 @@ const textOf = (result: unknown): string => {
 }
 
 let shuttingDown = false
+const vaultCmd = resolveVaultCommand()
 
 const connect = async (): Promise<Client | null> => {
-  if (shuttingDown) return null
+  if (shuttingDown || !vaultCmd) return null
   if (client) return client
   if (connecting) return connecting
   connecting = (async () => {
     try {
-      const transport = new StdioClientTransport({ command: COMMAND, args: ARGS, env: { ...process.env } as Record<string, string> })
+      const transport = new StdioClientTransport({ command: vaultCmd.command, args: vaultCmd.args, env: { ...process.env } as Record<string, string> })
       const c = new Client({ name: 'mission-control', version: '0.1.0' })
       await c.connect(transport)
       // closeVault() may have run while we were connecting — don't publish a
@@ -78,12 +79,21 @@ const discard = (c: Client | null): void => {
   void c?.close().catch(() => undefined)
 }
 
+let fails = 0
+let pollHandle: NodeJS.Timeout | null = null
+
 const refresh = async (): Promise<void> => {
   const c = await connect()
   if (!c) {
     if (stats.connected) stats = { ...stats, connected: false }
+    // AgentVault probably isn't installed — stop spawning a failing python
+    if (vaultCmd && ++fails >= 3 && pollHandle) {
+      clearInterval(pollHandle)
+      pollHandle = null
+    }
     return
   }
+  fails = 0
   try {
     const status = parseStatus(textOf(await c.callTool({ name: 'vault_status', arguments: {} })))
     const sessions = parseSessions(textOf(await c.callTool({ name: 'vault_wake_up', arguments: {} })))
@@ -110,9 +120,11 @@ export const closeVault = async (): Promise<void> => {
 
 export const vaultStats = (): VaultStats => stats
 
-export const startVaultPolling = (): NodeJS.Timeout => {
+export const startVaultPolling = (): NodeJS.Timeout | null => {
+  if (!vaultCmd) return null // AgentVault not configured — DATA CORE stays offline
   void refresh()
-  return setInterval(() => void refresh(), POLL_MS)
+  pollHandle = setInterval(() => void refresh(), POLL_MS)
+  return pollHandle
 }
 
 export type VaultSearchResult = { ok: boolean; text: string }

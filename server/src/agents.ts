@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Router } from 'express'
 import { AGENT_NAME_RE, sessionNameFor, VAULT_ID, type AgentMeta, type SpawnRequest } from '@mc/shared'
+import { PORT } from './config'
 import { emitLinksChanged } from './events'
 import { addLink, listLinks, pruneLinks, removeLink } from './links'
 import { hooksFilePath, loadRegistry, saveRegistry, type AgentRecord } from './registry'
@@ -149,7 +150,7 @@ export const agentsRouter = (): Router => {
       sessionId,
       claudeBin,
       hooksPath: hooksFilePath(),
-      port: 4711,
+      port: PORT,
       withGlobals: firstSpawn,
     })
     if (!spawned.ok) {

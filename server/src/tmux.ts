@@ -1,8 +1,7 @@
 import { execFile } from 'node:child_process'
-import { accessSync, constants } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
 import { sessionNameFor } from '@mc/shared'
+
+export { resolveClaudeBin } from './config'
 
 // Every target uses exact-match `=name` — bare `-t mc-sphere` would
 // prefix-match `mc-sphere-web`. No `~` in any argv: there is no shell
@@ -22,19 +21,6 @@ const tmux = (args: string[]): Promise<{ ok: boolean; stdout: string; stderr: st
 
 export const hasSession = (name: string): Promise<boolean> =>
   tmux(['has-session', '-t', `=${name}`]).then(r => r.ok)
-
-export const resolveClaudeBin = (): string => {
-  const fallback = join(homedir(), '.local', 'bin', 'claude')
-  for (const candidate of [fallback]) {
-    try {
-      accessSync(candidate, constants.X_OK)
-      return candidate
-    } catch {
-      // try next
-    }
-  }
-  throw new Error(`claude binary not found at ${fallback}`)
-}
 
 type SpawnArgs = {
   agent: string
