@@ -196,8 +196,11 @@ export const Canvas = () => {
         fitView
         proOptions={{ hideAttribution: true }}
         deleteKeyCode={null}
+        zoomOnDoubleClick={false}
       >
-        <Background variant={BackgroundVariant.Dots} gap={28} size={1} color="rgba(81,240,138,0.12)" />
+        {/* dotted graticule: a fine grid of dotted lines, H + V */}
+        <Background id="grid" variant={BackgroundVariant.Lines} gap={48} lineWidth={1} color="rgba(81,240,138,0.22)" />
+        <Background id="dots" variant={BackgroundVariant.Dots} gap={48} size={2} color="rgba(81,240,138,0.30)" />
         <Controls showInteractive={false} />
       </ReactFlow>
     </div>

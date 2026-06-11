@@ -7,6 +7,12 @@
   background: var(--bg-void);
 }
 
+/* make the grid LINES dotted (the Dots layer is circles, unaffected) */
+.react-flow__background path,
+.react-flow__background line {
+  stroke-dasharray: 2 6;
+}
+
 /* the node wrapper fills its React Flow node box */
 .console-node {
   width: 100%;

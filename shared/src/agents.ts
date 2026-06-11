@@ -1,9 +1,12 @@
+export type AgentStatus = 'running' | 'needs-input' | 'idle' | 'exited'
+
 export type AgentMeta = {
   agent: string
   repoDir: string
   spawnedAt: string
   sessionId: string | null
   dead: boolean
+  status: AgentStatus
 }
 
 export type SpawnRequest = {

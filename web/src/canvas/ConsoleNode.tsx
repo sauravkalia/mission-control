@@ -3,6 +3,7 @@ import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react'
 import { sessionNameFor, type AgentMeta } from '@mc/shared'
 import { useAgents } from '../stores/agentsStore'
 import { useCards } from '../stores/cardsStore'
+import { useStatus } from '../stores/statusStore'
 import { ConsoleCard } from '../cards/ConsoleCard'
 
 export type ConsoleNodeData = { meta: AgentMeta }
@@ -21,6 +22,9 @@ export const ConsoleNode = memo(({ id, data, selected }: NodeProps) => {
   const killAgent = useAgents(s => s.killAgent)
   const setMinimized = useCards(s => s.setMinimized)
   const setMaximized = useCards(s => s.setMaximized)
+  const status = useStatus(s => s.display(meta.agent))
+  // subscribe to this agent's entry so display() recomputes on change
+  useStatus(s => s.byAgent[meta.agent])
 
   return (
     <div className="console-node">
@@ -34,6 +38,7 @@ export const ConsoleNode = memo(({ id, data, selected }: NodeProps) => {
         session={sessionNameFor(meta.agent)}
         repoLabel={shortenHome(meta.repoDir)}
         dead={meta.dead}
+        status={status}
         onMinimize={() => setMinimized(id, true)}
         onKill={() => void killAgent(id)}
         onToggleMaximize={() => setMaximized(id)}

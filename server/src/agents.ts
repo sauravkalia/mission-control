@@ -7,6 +7,7 @@ import { AGENT_NAME_RE, sessionNameFor, VAULT_ID, type AgentMeta, type SpawnRequ
 import { emitLinksChanged } from './events'
 import { addLink, listLinks, pruneLinks, removeLink } from './links'
 import { hooksFilePath, loadRegistry, saveRegistry, type AgentRecord } from './registry'
+import { getStatus } from './status'
 import {
   capturePaneTail,
   killSession,
@@ -42,13 +43,17 @@ export const agentSessionId = (agent: string): string | null =>
 export const agentRepoDir = (agent: string): string | undefined =>
   registry.find(r => r.agent === agent)?.repoDir
 
-const toMeta = (r: AgentRecord, live: Map<string, { dead: boolean }>): AgentMeta => ({
-  agent: r.agent,
-  repoDir: r.repoDir,
-  spawnedAt: r.spawnedAt,
-  sessionId: r.sessionId,
-  dead: live.get(sessionNameFor(r.agent))?.dead ?? true,
-})
+const toMeta = (r: AgentRecord, live: Map<string, { dead: boolean }>): AgentMeta => {
+  const dead = live.get(sessionNameFor(r.agent))?.dead ?? true
+  return {
+    agent: r.agent,
+    repoDir: r.repoDir,
+    spawnedAt: r.spawnedAt,
+    sessionId: r.sessionId,
+    dead,
+    status: dead ? 'exited' : getStatus(r.agent),
+  }
+}
 
 const expandHome = (p: string): string => (p.startsWith('~/') ? join(homedir(), p.slice(2)) : p)
 

@@ -61,6 +61,14 @@ const parseStatus = (text: string): Pick<VaultStats, 'chunks' | 'projects' | 'so
 
 const parseSessions = (text: string): number => Number(/(\d+)\s+sessions/.exec(text)?.[1] ?? 0)
 
+// Discard a client and GUARANTEE its python child dies. Nulling the singleton
+// is not enough — only Client.close() → transport.close() sends SIGTERM/SIGKILL,
+// so without this a timed-out callTool leaks orphan python processes.
+const discard = (c: Client | null): void => {
+  if (client === c) client = null
+  void c?.close().catch(() => undefined)
+}
+
 const refresh = async (): Promise<void> => {
   const c = await connect()
   if (!c) {
@@ -76,9 +84,15 @@ const refresh = async (): Promise<void> => {
     // a real ingest event: the index grew since the last poll
     if (prevChunks > 0 && status.chunks > prevChunks) emitIngest(status.chunks - prevChunks)
   } catch {
-    client = null
+    discard(c)
     stats = { ...stats, connected: false }
   }
+}
+
+export const closeVault = async (): Promise<void> => {
+  const c = client
+  client = null
+  await c?.close().catch(() => undefined)
 }
 
 export const vaultStats = (): VaultStats => stats

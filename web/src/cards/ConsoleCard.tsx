@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { ClientMessage } from '@mc/shared'
+import type { DisplayStatus } from '../stores/statusStore'
 import { mocrTermTheme } from '../theme/mocrTermTheme'
 import '@xterm/xterm/css/xterm.css'
 import './console-card.css'
@@ -17,10 +18,19 @@ type ConsoleCardProps = {
   session: string
   repoLabel: string
   dead: boolean
+  status: DisplayStatus
   onMinimize: () => void
   onKill: () => void
   maximized?: boolean
   onToggleMaximize?: () => void
+}
+
+const ANNUNCIATOR: Record<DisplayStatus, { label: string; cls: string }> = {
+  running: { label: 'RUN', cls: 'st-run' },
+  'needs-input': { label: 'ACTN', cls: 'st-actn' },
+  completed: { label: 'DONE', cls: 'st-done' },
+  idle: { label: 'IDLE', cls: 'st-idle' },
+  exited: { label: 'LOS', cls: 'st-los' },
 }
 
 const KILL_HOLD_MS = 600
@@ -59,6 +69,7 @@ export const ConsoleCard = ({
   session,
   repoLabel,
   dead,
+  status,
   onMinimize,
   onKill,
   maximized,
@@ -159,14 +170,21 @@ export const ConsoleCard = ({
     }
   }, [session])
 
-  // LOS means "tmux session gone" only (Design.md §1) — socket drops are
-  // communicated by the link overlay, not the annunciator.
-  const annunciator = dead ? 'LOS' : 'GO'
+  // the socket-lost state still overrides to LOS regardless of agent status
+  const effective: DisplayStatus = dead ? 'exited' : status
+  const ann = ANNUNCIATOR[effective]
 
   return (
-    <section className={`console-card link-${link}`}>
-      <header className="card-titlebar">
-        <span className={`annunciator ${annunciator === 'GO' ? 'st-go' : 'st-los'}`}>{annunciator}</span>
+    <section className={`console-card link-${link} status-${effective}`}>
+      <header
+        className="card-titlebar"
+        onDoubleClick={() => onToggleMaximize?.()}
+        title={onToggleMaximize ? 'double-click to maximize' : undefined}
+      >
+        <span className={`annunciator ${ann.cls}`}>
+          {effective === 'running' && <span className="ann-spinner" />}
+          {ann.label}
+        </span>
         <span className="callsign">{callsign}</span>
         <span className="repo-label">
           <span className="repo-path">{repoLabel}</span>
@@ -184,11 +202,11 @@ export const ConsoleCard = ({
           {onToggleMaximize && (
             <button
               type="button"
-              className="card-btn"
+              className="card-btn maximize-btn"
               title={maximized ? 'restore to canvas' : 'maximize'}
               onClick={onToggleMaximize}
             >
-              {maximized ? '❐' : '⤢'}
+              {maximized ? '❐' : '□'}
             </button>
           )}
           <KillButton onKill={onKill} />

@@ -1,4 +1,4 @@
-import type { VaultStats } from '@mc/shared'
+import type { AgentStatus, VaultStats } from '@mc/shared'
 import type { WebSocket } from 'ws'
 
 // Server → client event channel feeding the canvas: status, links, the hero
@@ -10,6 +10,7 @@ export type McEvent =
   | { type: 'heartbeat'; at: number }
   | { type: 'vault'; stats: VaultStats }
   | { type: 'ingest'; delta: number; at: number }
+  | { type: 'status'; agent: string; status: AgentStatus }
 
 const clients = new Set<WebSocket>()
 

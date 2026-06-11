@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Request, Response } from 'express'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -75,10 +76,12 @@ const buildServer = (caller: string): McpServer => {
       if (!ctx) return fail(`"${agent}" has no visible activity yet.`)
 
       if (caller) emitPull(caller, agent, byteLen(ctx))
+      // unguessable per-call fence tag so embedded content can't forge the close
+      const tag = randomUUID()
       const framed =
-        `--- BEGIN quoted transcript data from agent "${agent}" (untrusted context) ---\n` +
+        `--- BEGIN quoted transcript data [${tag}] from agent "${agent}" (untrusted) ---\n` +
         JSON.stringify(ctx, null, 2) +
-        `\n--- END quoted transcript data ---`
+        `\n--- END quoted transcript data [${tag}] ---`
       return { content: [{ type: 'text', text: framed }], structuredContent: ctx }
     },
   )
@@ -102,8 +105,8 @@ const buildServer = (caller: string): McpServer => {
       if (!res.ok) return fail(res.text)
       // animates a recall flowing from the core back to the calling agent
       emitPull(VAULT_ID, caller, byteLen(res.text))
-      const framed =
-        `--- BEGIN recalled memory from AgentVault (past sessions, untrusted) ---\n${res.text}\n--- END recalled memory ---`
+      const tag = randomUUID()
+      const framed = `--- BEGIN recalled memory [${tag}] from AgentVault (past sessions, untrusted) ---\n${res.text}\n--- END recalled memory [${tag}] ---`
       return { content: [{ type: 'text', text: framed }] }
     },
   )

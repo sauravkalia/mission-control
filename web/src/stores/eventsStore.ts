@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import type { VaultStats } from '@mc/shared'
+import type { AgentStatus, VaultStats } from '@mc/shared'
 import { useLinks } from './linksStore'
+import { useStatus } from './statusStore'
 import { useVault } from './vaultStore'
 
 export type PullEvent = { from: string; to: string; bytes: number; at: number }
@@ -43,6 +44,7 @@ export const useEvents = create<EventsState>((set) => ({
           | { type: 'heartbeat'; at: number }
           | { type: 'vault'; stats: VaultStats }
           | { type: 'ingest'; delta: number; at: number }
+          | { type: 'status'; agent: string; status: AgentStatus }
         if (event.type === 'heartbeat') {
           set({ baseLive: true })
           armBeat()
@@ -55,6 +57,8 @@ export const useEvents = create<EventsState>((set) => ({
           useVault.getState().setStats(event.stats)
         } else if (event.type === 'ingest') {
           set({ lastIngest: { delta: event.delta, at: event.at } })
+        } else if (event.type === 'status') {
+          useStatus.getState().set(event.agent, event.status)
         }
       }
       sock.onclose = () => {

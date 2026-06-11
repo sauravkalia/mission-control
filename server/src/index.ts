@@ -5,7 +5,8 @@ import { agentsRouter, bootRegistry, isKnownSession } from './agents'
 import { readEnvironment } from './environment'
 import { addEventClient, startHeartbeat } from './events'
 import { handleMcp } from './mcp'
-import { startVaultPolling, vaultStats } from './vault'
+import { startStatusPolling } from './status'
+import { closeVault, startVaultPolling, vaultStats } from './vault'
 import { attachRelay } from './relay'
 import { ensureMcDir } from './registry'
 import { hasSession } from './tmux'
@@ -109,7 +110,21 @@ server.on('upgrade', (req, socket, head) => {
 })
 
 startHeartbeat()
-startVaultPolling()
+const vaultPoll = startVaultPolling()
+const statusPoll = startStatusPolling()
+
+// Reap the spawned AgentVault python on shutdown / tsx-watch restart, instead of
+// orphaning it (its child isn't in our process group, so SIGTERM won't reach it).
+let shuttingDown = false
+const shutdown = () => {
+  if (shuttingDown) return
+  shuttingDown = true
+  clearInterval(vaultPoll)
+  clearInterval(statusPoll)
+  void closeVault().finally(() => process.exit(0))
+}
+process.on('SIGINT', shutdown)
+process.on('SIGTERM', shutdown)
 
 server.listen(PORT, HOST, () => {
   console.log(`[mc] uplink on http://${HOST}:${PORT}`)

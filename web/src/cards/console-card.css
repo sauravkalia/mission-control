@@ -17,6 +17,48 @@
   border-color: var(--line-dim);
 }
 
+/* ── at-a-glance status (visible even zoomed out via the card glow) ── */
+.console-card.status-running {
+  border-color: var(--st-go);
+  box-shadow:
+    0 0 0 1px var(--st-go),
+    0 0 22px rgba(81, 240, 138, 0.35),
+    0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: card-run-pulse 1.8s ease-in-out infinite;
+}
+
+.console-card.status-needs-input {
+  border-color: var(--st-actn);
+  box-shadow:
+    0 0 0 1px var(--st-actn),
+    0 0 26px rgba(255, 176, 0, 0.45),
+    0 12px 32px rgba(0, 0, 0, 0.55);
+  animation: card-actn-pulse 1.1s ease-in-out infinite;
+}
+
+.console-card.status-completed {
+  border-color: var(--st-go);
+  box-shadow:
+    0 0 0 1px var(--st-go),
+    0 0 18px rgba(81, 240, 138, 0.3),
+    0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.console-card.status-exited {
+  border-color: var(--st-los);
+  box-shadow: 0 0 16px rgba(255, 77, 61, 0.3), 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes card-run-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--st-go), 0 0 16px rgba(81, 240, 138, 0.25), 0 12px 32px rgba(0, 0, 0, 0.55); }
+  50% { box-shadow: 0 0 0 1px var(--st-go), 0 0 30px rgba(81, 240, 138, 0.5), 0 12px 32px rgba(0, 0, 0, 0.55); }
+}
+
+@keyframes card-actn-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--st-actn), 0 0 18px rgba(255, 176, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.55); }
+  50% { box-shadow: 0 0 0 1px var(--st-actn), 0 0 34px rgba(255, 176, 0, 0.6), 0 12px 32px rgba(0, 0, 0, 0.55); }
+}
+
 .card-titlebar {
   display: flex;
   align-items: center;
@@ -30,11 +72,13 @@
 }
 
 .annunciator {
-  width: 36px;
+  min-width: 36px;
   height: 16px;
+  padding: 0 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   border: 1px solid currentcolor;
   border-radius: 2px;
   font-size: 9px;
@@ -45,9 +89,41 @@
 .annunciator.st-go {
   color: var(--st-go);
 }
-
+.annunciator.st-run {
+  color: var(--st-go);
+}
+.annunciator.st-done {
+  color: var(--st-go);
+  background: rgba(81, 240, 138, 0.12);
+}
+.annunciator.st-actn {
+  color: var(--st-actn);
+  animation: ann-blink 1.1s ease-in-out infinite;
+}
+.annunciator.st-idle {
+  color: var(--st-stby);
+}
 .annunciator.st-los {
   color: var(--st-los);
+}
+
+@keyframes ann-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* spinning dot in the RUN badge */
+.ann-spinner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid currentcolor;
+  border-right-color: transparent;
+  animation: ann-spin 0.7s linear infinite;
+}
+
+@keyframes ann-spin {
+  to { transform: rotate(360deg); }
 }
 
 .callsign {
