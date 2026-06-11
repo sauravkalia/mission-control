@@ -5,7 +5,6 @@ export const Dock = () => {
   const agents = useAgents(s => s.agents)
   const cards = useCards(s => s.cards)
   const setMinimized = useCards(s => s.setMinimized)
-  const raise = useCards(s => s.raise)
 
   const minimized = agents.filter(a => cards[a.agent]?.minimized)
   if (minimized.length === 0) return null
@@ -18,10 +17,7 @@ export const Dock = () => {
           key={a.agent}
           type="button"
           className="dock-tile"
-          onClick={() => {
-            setMinimized(a.agent, false)
-            raise(a.agent)
-          }}
+          onClick={() => setMinimized(a.agent, false)}
         >
           <span className={`dock-dot ${a.dead ? 'st-los' : 'st-go'}`}>●</span>
           {a.agent.toUpperCase()}

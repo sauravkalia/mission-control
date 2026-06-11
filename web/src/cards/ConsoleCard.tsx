@@ -161,7 +161,7 @@ export const ConsoleCard = ({ callsign, session, repoLabel, dead, onMinimize, on
           <span className="repo-path">{repoLabel}</span>
           <span className="session-suffix">· {session}</span>
         </span>
-        <span className="card-actions">
+        <span className="card-actions nodrag">
           <button type="button" className="card-btn" title="copy tmux attach command" onClick={copyAttach}>
             {copied ? '✓' : '⧉'}
           </button>
@@ -171,7 +171,7 @@ export const ConsoleCard = ({ callsign, session, repoLabel, dead, onMinimize, on
           <KillButton onKill={onKill} />
         </span>
       </header>
-      <div className="term-well">
+      <div className="term-well nodrag nowheel">
         <div className="term-host" ref={hostRef} />
         {copied && <div className="copy-toast">COPIED — ATTACH FROM ANY TERMINAL</div>}
         {link !== 'up' && (
