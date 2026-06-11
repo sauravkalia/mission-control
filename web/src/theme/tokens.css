@@ -1,0 +1,56 @@
+/* MOCR design tokens — Design.md §1 (M0 subset) */
+:root {
+  --bg-void: #050807;
+  --bg-panel: #0a0f0c;
+  --bg-card: #0c1310;
+  --bg-titlebar: #101814;
+  --bg-raised: #141d18;
+  --bg-term: #040605;
+  --line-dim: #1b2520;
+  --line: #28342d;
+  --line-bright: #3d4f45;
+  --ink-hi: #d9e5dc;
+  --ink-mid: #93a89b;
+  --ink-low: #5b6e62;
+  --ink-ghost: #38463e;
+  --phos-green: #51f08a;
+  --phos-green-dim: #2e8f55;
+  --phos-amber: #ffb000;
+  --st-go: #51f08a;
+  --st-actn: #ffb000;
+  --st-stby: #6f8378;
+  --st-los: #ff4d3d;
+
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-void);
+  color: var(--ink-hi);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Ground-track graticule: minor 48px / major 240px grid + edge vignette */
+.canvas {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background-image:
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.08) 100%),
+    repeating-linear-gradient(0deg, rgba(81, 240, 138, 0.07) 0 1px, transparent 1px 240px),
+    repeating-linear-gradient(90deg, rgba(81, 240, 138, 0.07) 0 1px, transparent 1px 240px),
+    repeating-linear-gradient(0deg, rgba(81, 240, 138, 0.035) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, rgba(81, 240, 138, 0.035) 0 1px, transparent 1px 48px);
+}

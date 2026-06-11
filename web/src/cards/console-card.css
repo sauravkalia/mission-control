@@ -1,0 +1,109 @@
+.console-card {
+  position: absolute;
+  top: 96px;
+  left: 96px;
+  width: 920px;
+  height: 560px;
+  min-width: 320px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+  /* M0: CSS resize stands in for the M1 window manager */
+  resize: both;
+  overflow: hidden;
+}
+
+.console-card.link-lost {
+  border-color: var(--line-dim);
+}
+
+.card-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0 8px;
+  background: var(--bg-titlebar);
+  border-bottom: 1px solid var(--line-dim);
+  user-select: none;
+}
+
+.annunciator {
+  width: 36px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid currentcolor;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.annunciator.st-go {
+  color: var(--st-go);
+}
+
+.annunciator.st-los {
+  color: var(--st-los);
+}
+
+.callsign {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-hi);
+  text-shadow: 0 0 6px rgba(81, 240, 138, 0.25);
+}
+
+.repo-label {
+  font-size: 11px;
+  color: var(--ink-mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-label .session-suffix {
+  color: var(--ink-low);
+}
+
+.term-well {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  background: var(--bg-term);
+}
+
+.term-host {
+  width: 100%;
+  height: 100%;
+}
+
+/* xterm's viewport keeps its own bg; kill the seam */
+.term-host .xterm,
+.term-host .xterm-viewport {
+  background-color: var(--bg-term);
+}
+
+.link-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 7, 0.78);
+  color: var(--ink-mid);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}

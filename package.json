@@ -1,0 +1,17 @@
+{
+  "name": "mission-control",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "concurrently -n srv,web -c green,cyan \"pnpm --filter @mc/server dev\" \"pnpm --filter @mc/web dev\"",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
