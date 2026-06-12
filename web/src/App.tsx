@@ -3,6 +3,7 @@ import { ReactFlowProvider } from '@xyflow/react'
 import { Canvas } from './canvas/Canvas'
 import { Dock } from './app/Dock'
 import { MaximizedView } from './app/MaximizedView'
+import { Sidebar } from './app/Sidebar'
 import { SpawnDialog } from './app/SpawnDialog'
 import { TelemetryStrip } from './app/TelemetryStrip'
 import { useAgents } from './stores/agentsStore'
@@ -45,6 +46,7 @@ export const App = () => {
       <TelemetryStrip onNew={() => setSpawnOpen(true)} />
       <ReactFlowProvider>
         <Canvas />
+        <Sidebar />
       </ReactFlowProvider>
       {loaded && agents.length === 0 && (
         <div className="empty-state">

@@ -14,7 +14,11 @@ import { capturePaneScreen, listMcSessions } from './tmux'
 //   needs-input → input box shows a numbered menu "❯ 1." / trust dialog
 //   exited      → the tmux pane is dead
 
-const POLL_MS = 2000
+// Fable agents finish tasks in seconds and run tool-heavy work in quick bursts
+// with brief idle gaps between, so poll fast and hold "running" across a couple
+// of idle reads — otherwise the glow flickers to idle mid-task.
+const POLL_MS = 700
+const IDLE_CONFIRM = 3
 
 // Claude's rotating spinner glyphs (NOT the content bullets ● ⏺ ⎿ or prompt ❯).
 const SPINNER = '[✻✶✽✳✢✺✹✸✷✦✧✥⋆∗⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠟⠯⠷⠾⠽⠻]'
@@ -54,6 +58,7 @@ export const classify = (lines: string[]): AgentStatus => {
 }
 
 const statuses = new Map<string, AgentStatus>()
+const idleStreak = new Map<string, number>()
 
 export const getStatus = (agent: string): AgentStatus => statuses.get(agent) ?? 'idle'
 
@@ -68,13 +73,26 @@ const tick = async (): Promise<void> => {
     for (const agent of [...statuses.keys()]) {
       if (!live.has(`mc-${agent}`)) {
         statuses.delete(agent)
+        idleStreak.delete(agent)
         emit({ type: 'status', agent, status: 'exited' })
       }
     }
     for (const [session, state] of live) {
       if (!session.startsWith('mc-')) continue
       const agent = session.slice(3)
-      const next: AgentStatus = state.dead ? 'exited' : classify(await capturePaneScreen(session))
+      let next: AgentStatus = state.dead ? 'exited' : classify(await capturePaneScreen(session))
+
+      // Debounce running→idle: a single idle read mid-task (the gap between two
+      // tool calls / thinking bursts) shouldn't drop the glow. Require a few
+      // consecutive idle reads before actually going idle.
+      if (next === 'idle' && statuses.get(agent) === 'running') {
+        const streak = (idleStreak.get(agent) ?? 0) + 1
+        idleStreak.set(agent, streak)
+        if (streak < IDLE_CONFIRM) next = 'running'
+      } else {
+        idleStreak.set(agent, 0)
+      }
+
       if (statuses.get(agent) !== next) {
         statuses.set(agent, next)
         emit({ type: 'status', agent, status: next })
