@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { Canvas } from './canvas/Canvas'
+import { CommandPalette } from './app/CommandPalette'
 import { Dock } from './app/Dock'
 import { MaximizedView } from './app/MaximizedView'
 import { Sidebar } from './app/Sidebar'
@@ -22,6 +23,7 @@ export const App = () => {
   const fetchVault = useVault(s => s.fetchVault)
   const connectEvents = useEvents(s => s.connect)
   const [spawnOpen, setSpawnOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   useEffect(() => {
     void fetchAgents()
@@ -35,6 +37,11 @@ export const App = () => {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen(o => !o)
+        return
+      }
       if (e.key.toLowerCase() === 'n' && e.target === document.body) setSpawnOpen(true)
     }
     window.addEventListener('keydown', onKey)
@@ -47,6 +54,9 @@ export const App = () => {
       <ReactFlowProvider>
         <Canvas />
         <Sidebar />
+        {paletteOpen && (
+          <CommandPalette onNew={() => setSpawnOpen(true)} onClose={() => setPaletteOpen(false)} />
+        )}
       </ReactFlowProvider>
       {loaded && agents.length === 0 && (
         <div className="empty-state">

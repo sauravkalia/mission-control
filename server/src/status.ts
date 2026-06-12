@@ -1,4 +1,4 @@
-import type { AgentStatus } from '@mc/shared'
+import type { AgentActivity, AgentStatus } from '@mc/shared'
 import { emit } from './events'
 import { capturePaneScreen, listMcSessions } from './tmux'
 
@@ -57,10 +57,47 @@ export const classify = (lines: string[]): AgentStatus => {
   return 'idle'
 }
 
+// "what's it doing" — the most recent tool action (⏺ Edit src/x.ts), else the
+// spinner gerund (Thinking…), cleaned to a short label.
+const TOOL_RE = /^\s*⏺\s+(.+)$/
+const GERUND_RE = new RegExp(`^\\s*${SPINNER}\\s+([A-Za-z][\\w ]*…)`)
+
+const cleanAction = (raw: string): string =>
+  raw
+    .replace(/\(([^)]+)\)/, ' $1') // Edit(src/x.ts) → Edit src/x.ts
+    .replace(/[`*]/g, '')
+    .trim()
+    .slice(0, 52)
+
+const extractAction = (lines: string[], status: AgentStatus): string => {
+  if (status === 'needs-input') return 'waiting for you'
+  if (status === 'idle' || status === 'exited') return ''
+  // running: latest tool line if any, else the spinner gerund
+  for (let i = lines.length - 1; i >= 0 && i > lines.length - 20; i -= 1) {
+    const tool = TOOL_RE.exec(lines[i] ?? '')
+    if (tool?.[1]) return cleanAction(tool[1])
+  }
+  for (const line of regionAboveInputBox(lines)) {
+    const g = GERUND_RE.exec(line)
+    if (g?.[1]) return g[1]
+  }
+  return 'working…'
+}
+
+// context-window fullness, scraped from the status bar ("ctx:4%")
+const extractCtx = (lines: string[]): number | null => {
+  const m = /ctx:\s*(\d+)\s*%/i.exec(lines.join('\n'))
+  return m?.[1] ? Number(m[1]) : null
+}
+
 const statuses = new Map<string, AgentStatus>()
+const activities = new Map<string, AgentActivity>()
 const idleStreak = new Map<string, number>()
 
+const IDLE_ACTIVITY: AgentActivity = { status: 'idle', action: '', ctx: null }
+
 export const getStatus = (agent: string): AgentStatus => statuses.get(agent) ?? 'idle'
+export const getActivity = (agent: string): AgentActivity => activities.get(agent) ?? IDLE_ACTIVITY
 
 let ticking = false
 
@@ -73,14 +110,16 @@ const tick = async (): Promise<void> => {
     for (const agent of [...statuses.keys()]) {
       if (!live.has(`mc-${agent}`)) {
         statuses.delete(agent)
+        activities.delete(agent)
         idleStreak.delete(agent)
-        emit({ type: 'status', agent, status: 'exited' })
+        emit({ type: 'status', agent, status: 'exited', action: '', ctx: null })
       }
     }
     for (const [session, state] of live) {
       if (!session.startsWith('mc-')) continue
       const agent = session.slice(3)
-      let next: AgentStatus = state.dead ? 'exited' : classify(await capturePaneScreen(session))
+      const lines = state.dead ? [] : await capturePaneScreen(session)
+      let next: AgentStatus = state.dead ? 'exited' : classify(lines)
 
       // Debounce running→idle: a single idle read mid-task (the gap between two
       // tool calls / thinking bursts) shouldn't drop the glow. Require a few
@@ -93,9 +132,13 @@ const tick = async (): Promise<void> => {
         idleStreak.set(agent, 0)
       }
 
-      if (statuses.get(agent) !== next) {
-        statuses.set(agent, next)
-        emit({ type: 'status', agent, status: next })
+      const action = extractAction(lines, next)
+      const ctx = extractCtx(lines)
+      const prev = activities.get(agent)
+      statuses.set(agent, next)
+      if (!prev || prev.status !== next || prev.action !== action || prev.ctx !== ctx) {
+        activities.set(agent, { status: next, action, ctx })
+        emit({ type: 'status', agent, status: next, action, ctx })
       }
     }
   } finally {

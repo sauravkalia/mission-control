@@ -129,13 +129,60 @@
   color: var(--ink-hi);
 }
 
-.station-repo {
+.station-sub {
   grid-column: 2;
   font-size: 9px;
   color: var(--ink-low);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* the action line brightens while the agent is working */
+.station-row.status-running .station-sub {
+  color: var(--st-go);
+}
+.station-row.status-needs-input {
+  background: rgba(255, 176, 0, 0.08);
+  border-color: rgba(255, 176, 0, 0.3);
+}
+.station-row.status-needs-input .station-sub {
+  color: var(--st-actn);
+}
+
+/* context-window fullness bar along the bottom of the row */
+.station-ctx {
+  grid-column: 1 / 3;
+  margin-top: 5px;
+  height: 2px;
+  background: var(--line-dim);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.station-ctx-fill {
+  display: block;
+  height: 100%;
+  background: var(--phos-green-dim);
+}
+.station-ctx-fill.hot {
+  background: var(--st-actn);
+}
+
+.sidebar-needs {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--st-actn);
+  animation: dot-pulse 1.1s ease-in-out infinite;
+}
+
+.sidebar-handle.alert {
+  width: auto;
+  padding: 0 6px;
+  color: var(--st-actn);
+  border-color: var(--st-actn);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .vault-row {

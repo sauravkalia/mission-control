@@ -41,6 +41,15 @@
   color: var(--st-los);
 }
 
+.strip-item.strip-running {
+  color: var(--st-go);
+}
+
+.strip-item.strip-needs {
+  color: var(--st-actn);
+  animation: ann-blink 1.1s ease-in-out infinite;
+}
+
 .strip-spacer {
   flex: 1;
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AgentStatus, VaultStats } from '@mc/shared'
 import { wsUrl } from '../lib/api'
+import { notify } from '../lib/notify'
 import { useLinks } from './linksStore'
 import { useStatus } from './statusStore'
 import { useVault } from './vaultStore'
@@ -44,7 +45,7 @@ export const useEvents = create<EventsState>((set) => ({
           | { type: 'heartbeat'; at: number }
           | { type: 'vault'; stats: VaultStats }
           | { type: 'ingest'; delta: number; at: number }
-          | { type: 'status'; agent: string; status: AgentStatus }
+          | { type: 'status'; agent: string; status: AgentStatus; action: string; ctx: number | null }
         if (event.type === 'heartbeat') {
           set({ baseLive: true })
           armBeat()
@@ -58,7 +59,12 @@ export const useEvents = create<EventsState>((set) => ({
         } else if (event.type === 'ingest') {
           set({ lastIngest: { delta: event.delta, at: event.at } })
         } else if (event.type === 'status') {
-          useStatus.getState().set(event.agent, event.status)
+          // ping the desktop when an agent newly needs you
+          const was = useStatus.getState().byAgent[event.agent]?.status
+          if (event.status === 'needs-input' && was !== 'needs-input') {
+            notify('Agent needs you', `${event.agent.toUpperCase()} is waiting for your input`)
+          }
+          useStatus.getState().set(event.agent, event.status, event.action, event.ctx)
         }
       }
       sock.onclose = () => {

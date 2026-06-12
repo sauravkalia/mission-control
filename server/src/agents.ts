@@ -8,12 +8,13 @@ import { PORT } from './config'
 import { emitLinksChanged } from './events'
 import { addLink, listLinks, pruneLinks, removeLink } from './links'
 import { hooksFilePath, loadRegistry, saveRegistry, type AgentRecord } from './registry'
-import { getStatus } from './status'
+import { getActivity } from './status'
 import {
   capturePaneTail,
   killSession,
   listMcSessions,
   resolveClaudeBin,
+  sendToSession,
   spawnAgentSession,
 } from './tmux'
 
@@ -46,13 +47,16 @@ export const agentRepoDir = (agent: string): string | undefined =>
 
 const toMeta = (r: AgentRecord, live: Map<string, { dead: boolean }>): AgentMeta => {
   const dead = live.get(sessionNameFor(r.agent))?.dead ?? true
+  const activity = getActivity(r.agent)
   return {
     agent: r.agent,
     repoDir: r.repoDir,
     spawnedAt: r.spawnedAt,
     sessionId: r.sessionId,
     dead,
-    status: dead ? 'exited' : getStatus(r.agent),
+    status: dead ? 'exited' : activity.status,
+    action: dead ? '' : activity.action,
+    ctx: dead ? null : activity.ctx,
   }
 }
 
@@ -179,6 +183,21 @@ export const agentsRouter = (): Router => {
     registry = [...registry, record]
     saveRegistry(registry)
     res.status(201).json(toMeta(record, live))
+  })
+
+  router.post('/agents/:agent/send', async (req, res) => {
+    const agent = req.params.agent
+    const { message } = (req.body ?? {}) as { message?: unknown }
+    if (typeof message !== 'string' || message.trim() === '') {
+      res.status(400).json({ error: 'message required' })
+      return
+    }
+    if (!registry.some(r => r.agent === agent)) {
+      res.status(404).json({ error: `no such agent: ${agent}` })
+      return
+    }
+    const ok = await sendToSession(sessionNameFor(agent), message)
+    res.status(ok ? 200 : 500).json({ ok })
   })
 
   router.delete('/agents/:agent', async (req, res) => {

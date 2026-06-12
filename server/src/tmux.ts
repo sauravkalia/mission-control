@@ -77,6 +77,19 @@ export const listMcSessions = async (): Promise<Map<string, { dead: boolean }>> 
   return map
 }
 
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
+// Inject a message into a session's prompt and submit it. set-buffer takes the
+// text as an argv (no shell, semicolon/newline-safe); paste-buffer -p uses
+// bracketed paste; Enter goes separately after a beat (Enter-in-burst with the
+// text gets swallowed as a newline inside the TUI input box).
+export const sendToSession = async (name: string, message: string): Promise<boolean> => {
+  if (!(await tmux(['set-buffer', '--', message])).ok) return false
+  if (!(await tmux(['paste-buffer', '-p', '-d', '-t', `=${name}:`])).ok) return false
+  await sleep(300)
+  return (await tmux(['send-keys', '-t', `=${name}:`, 'Enter'])).ok
+}
+
 export const capturePaneTail = async (name: string, lines = 15): Promise<string> => {
   const result = await tmux(['capture-pane', '-p', '-t', `=${name}:`])
   if (!result.ok) return ''

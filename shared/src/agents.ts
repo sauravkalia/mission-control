@@ -1,5 +1,13 @@
 export type AgentStatus = 'running' | 'needs-input' | 'idle' | 'exited'
 
+// What an agent is currently doing + how full its context window is, read live
+// from the rendered pane.
+export type AgentActivity = {
+  status: AgentStatus
+  action: string // e.g. "Edit src/cart.ts", "Thinking…", "" when idle
+  ctx: number | null // context-window % (0–100), or null if unknown
+}
+
 export type AgentMeta = {
   agent: string
   repoDir: string
@@ -7,6 +15,8 @@ export type AgentMeta = {
   sessionId: string | null
   dead: boolean
   status: AgentStatus
+  action: string
+  ctx: number | null
 }
 
 export type SpawnRequest = {

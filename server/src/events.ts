@@ -10,7 +10,7 @@ export type McEvent =
   | { type: 'heartbeat'; at: number }
   | { type: 'vault'; stats: VaultStats }
   | { type: 'ingest'; delta: number; at: number }
-  | { type: 'status'; agent: string; status: AgentStatus }
+  | { type: 'status'; agent: string; status: AgentStatus; action: string; ctx: number | null }
 
 const clients = new Set<WebSocket>()
 
