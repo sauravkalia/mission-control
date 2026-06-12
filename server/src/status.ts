@@ -18,26 +18,38 @@ const POLL_MS = 2000
 
 // Claude's rotating spinner glyphs (NOT the content bullets ● ⏺ ⎿ or prompt ❯).
 const SPINNER = '[✻✶✽✳✢✺✹✸✷✦✧✥⋆∗⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠟⠯⠷⠾⠽⠻]'
+// a live spinner line: "<glyph> Gerund… (Ns · ↓ tokens)". The ellipsis is the
+// present-tense tell; "<glyph> Gerund for Ns" (done) has no ellipsis.
 const SPINNER_RE = new RegExp(`^\\s*${SPINNER}\\s+[A-Za-z][\\w' .,/-]*…`)
-const WORK_RE = /….*(\(\s*\d+s|esc to interrupt)/i
-// chrome lines to skip when finding the live status line
+const ESC_RE = /esc to interrupt/i
+// chrome lines below/around the spinner — skipped when finding the input box
 const CHROME_RE = /^\s*$|^\s*[─━│╭╰╮╯┌┐└┘]+\s*$|⏵⏵|auto mode on|ctx:\d|session:\d|^\s*[❯>]\s*$/u
 // a selectable numbered option (permission / trust dialog) — anchored, not prose
 const DIALOG_RE = /[❯>]\s*1\.\s|I trust this folder|\(y\/n\)/i
 
-const liveStatusLine = (lines: string[]): string => {
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
+// The spinner sits just above the input box, but a transient "Checking for
+// updates…" notice can render BELOW it — so we scan the handful of content
+// lines above the input box, not just the single last one.
+const REGION = 6
+
+const regionAboveInputBox = (lines: string[]): string[] => {
+  let i = lines.length - 1
+  while (i >= 0 && (lines[i]?.trim() === '' || CHROME_RE.test(lines[i] ?? ''))) i -= 1
+  const region: string[] = []
+  for (; i >= 0 && region.length < REGION; i -= 1) {
     const line = lines[i] ?? ''
-    if (!CHROME_RE.test(line)) return line
+    if (line.trim() !== '') region.push(line)
   }
-  return ''
+  return region
 }
 
 export const classify = (lines: string[]): AgentStatus => {
   // a permission/trust dialog renders a numbered menu in the bottom region
   if (DIALOG_RE.test(lines.slice(-12).join('\n'))) return 'needs-input'
-  const live = liveStatusLine(lines)
-  if (SPINNER_RE.test(live) || WORK_RE.test(live)) return 'running'
+  const region = regionAboveInputBox(lines)
+  // running iff a real spinner (glyph + ellipsis) is in that region; the done
+  // marker "Gerund for Ns" and prose bullets (●) never match SPINNER_RE
+  if (region.some(l => SPINNER_RE.test(l) || ESC_RE.test(l))) return 'running'
   return 'idle'
 }
 
