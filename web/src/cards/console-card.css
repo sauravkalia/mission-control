@@ -266,6 +266,40 @@
   cursor: default;
 }
 
+.tb-gear {
+  width: 20px;
+  padding: 2px 0;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink-low);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.tb-gear:hover {
+  color: var(--ink-hi);
+  border-color: var(--line-bright);
+}
+
+.tb-cmd {
+  flex: 1;
+  min-width: 120px;
+  padding: 2px 6px;
+  background: var(--bg-term);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink-hi);
+  font: inherit;
+  font-size: 10px;
+}
+
+.tb-cmd:focus {
+  outline: none;
+  border-color: var(--phos-green-dim);
+}
+
 .tb-url {
   padding: 2px 6px;
   background: transparent;

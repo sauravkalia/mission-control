@@ -23,7 +23,7 @@ const emitService = (agent: string): void => {
   emit({ type: 'service', agent, running: s.running, url: s.url })
 }
 
-const detectCommand = (repoDir: string): string | null => {
+export const detectCommand = (repoDir: string): string | null => {
   try {
     const pkg = JSON.parse(readFileSync(join(repoDir, 'package.json'), 'utf8')) as {
       scripts?: Record<string, string>
@@ -44,9 +44,15 @@ const detectCommand = (repoDir: string): string | null => {
   }
 }
 
-export const startService = async (agent: string, repoDir: string): Promise<{ ok: boolean; error?: string }> => {
-  const command = detectCommand(repoDir)
-  if (!command) return { ok: false, error: 'no dev/start/serve script in package.json' }
+export const startService = async (
+  agent: string,
+  repoDir: string,
+  override?: string,
+): Promise<{ ok: boolean; error?: string }> => {
+  // an explicit command (e.g. a monorepo's `pnpm --filter web dev`) wins over
+  // the auto-detected root script
+  const command = override?.trim() || detectCommand(repoDir)
+  if (!command) return { ok: false, error: 'no dev/start/serve script found — set a run command' }
   await killSession(svcName(agent)) // restart cleanly if already up
   if (!(await startServiceSession(svcName(agent), repoDir, command))) {
     return { ok: false, error: 'failed to start the dev server' }

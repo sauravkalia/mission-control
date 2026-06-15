@@ -9,7 +9,7 @@ import { emitLinksChanged } from './events'
 import { addLink, listLinks, pruneLinks, removeLink } from './links'
 import { hooksFilePath, loadRegistry, saveRegistry, type AgentRecord } from './registry'
 import { getActivity } from './status'
-import { getService, startService, stopService } from './services'
+import { detectCommand, getService, startService, stopService } from './services'
 import {
   capturePaneTail,
   killSession,
@@ -187,14 +187,26 @@ export const agentsRouter = (): Router => {
     res.status(201).json(toMeta(record, live))
   })
 
-  // "Run app" — start/stop the agent's project dev server
+  // the auto-detected run command, so the UI can prefill the editable field
+  router.get('/agents/:agent/run-command', (req, res) => {
+    const record = registry.find(r => r.agent === req.params.agent)
+    if (!record) {
+      res.status(404).json({ error: `no such agent: ${req.params.agent}` })
+      return
+    }
+    res.json({ command: detectCommand(record.repoDir) })
+  })
+
+  // "Run app" — start/stop the agent's project dev server (optional command
+  // override for monorepos that need a specific package's dev script)
   router.post('/agents/:agent/server', async (req, res) => {
     const record = registry.find(r => r.agent === req.params.agent)
     if (!record) {
       res.status(404).json({ error: `no such agent: ${req.params.agent}` })
       return
     }
-    const result = await startService(record.agent, record.repoDir)
+    const { command } = (req.body ?? {}) as { command?: unknown }
+    const result = await startService(record.agent, record.repoDir, typeof command === 'string' ? command : undefined)
     res.status(result.ok ? 201 : 400).json(result)
   })
 
@@ -203,19 +215,27 @@ export const agentsRouter = (): Router => {
     res.status(200).json({ ok: true })
   })
 
-  // "Connect Playwright" — tell the agent to open the running app in a browser
+  // "Connect Playwright" — open the running app in a visible browser and WAIT
+  // (action: 'close' tells the agent to close the browser instead)
   router.post('/agents/:agent/playwright', async (req, res) => {
     const agent = req.params.agent
     if (!registry.some(r => r.agent === agent)) {
       res.status(404).json({ error: `no such agent: ${agent}` })
       return
     }
-    const url = getService(agent).url
-    const message = url
-      ? `Use the Playwright MCP to open ${url} in the browser, walk through the app, and report what you see and any issues you find. Keep the browser visible.`
-      : `Use the Playwright MCP to open this project's local dev app in a visible browser (start the dev server first if it isn't running), walk through the app, and report what you see and any issues.`
+    const { action } = (req.body ?? {}) as { action?: unknown }
+    let message: string
+    if (action === 'close') {
+      message = 'Close the Playwright browser now (use the Playwright MCP browser_close tool) and then stop.'
+    } else {
+      const url = getService(agent).url
+      const where = url ? url : "this project's local dev app URL"
+      message =
+        `Use the Playwright MCP to open ${where} in a visible browser, and then STOP and wait for my next instruction. ` +
+        'Do NOT click around, navigate elsewhere, run tests, or do anything else — just open the page and wait.'
+    }
     const ok = await sendToSession(sessionNameFor(agent), message)
-    res.status(ok ? 200 : 500).json({ ok, url })
+    res.status(ok ? 200 : 500).json({ ok })
   })
 
   router.post('/agents/:agent/send', async (req, res) => {
