@@ -6,6 +6,7 @@ import type { ClientMessage } from '@mc/shared'
 import { wsUrl } from '../lib/api'
 import type { DisplayStatus } from '../stores/statusStore'
 import { mocrTermTheme } from '../theme/mocrTermTheme'
+import { CardToolbar } from './CardToolbar'
 import '@xterm/xterm/css/xterm.css'
 import './console-card.css'
 
@@ -15,6 +16,7 @@ const COPY_FLASH_MS = 1200
 type LinkState = 'connecting' | 'up' | 'lost'
 
 type ConsoleCardProps = {
+  agent: string
   callsign: string
   session: string
   repoLabel: string
@@ -66,6 +68,7 @@ const KillButton = ({ onKill }: { onKill: () => void }) => {
 }
 
 export const ConsoleCard = ({
+  agent,
   callsign,
   session,
   repoLabel,
@@ -212,6 +215,7 @@ export const ConsoleCard = ({
           <KillButton onKill={onKill} />
         </span>
       </header>
+      <CardToolbar agent={agent} />
       <div className="term-well nodrag nowheel">
         <div className="term-host" ref={hostRef} />
         {copied && <div className="copy-toast">COPIED — ATTACH FROM ANY TERMINAL</div>}

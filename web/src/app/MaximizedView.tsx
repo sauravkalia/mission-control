@@ -31,6 +31,7 @@ export const MaximizedView = () => {
   return (
     <div className="maximized-view">
       <ConsoleCard
+        agent={meta.agent}
         callsign={meta.agent.toUpperCase()}
         session={sessionNameFor(meta.agent)}
         repoLabel={shortenHome(meta.repoDir)}

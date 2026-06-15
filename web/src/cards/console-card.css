@@ -227,6 +227,66 @@
   }
 }
 
+/* ── per-agent quick actions (run app / playwright) ── */
+.card-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-titlebar);
+  border-bottom: 1px solid var(--line-dim);
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+
+.tb-btn {
+  padding: 2px 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink-mid);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.tb-btn:hover {
+  color: var(--ink-hi);
+  border-color: var(--line-bright);
+}
+
+.tb-btn.on {
+  color: var(--st-go);
+  border-color: var(--phos-green-dim);
+}
+
+.tb-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tb-url {
+  padding: 2px 6px;
+  background: transparent;
+  border: none;
+  color: var(--phos-green);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.tb-detecting {
+  color: var(--ink-low);
+  font-size: 9px;
+}
+
+.tb-error {
+  color: var(--st-los);
+  font-size: 9px;
+}
+
 .term-well {
   position: relative;
   flex: 1;

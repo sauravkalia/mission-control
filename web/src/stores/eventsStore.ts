@@ -3,6 +3,7 @@ import type { AgentStatus, VaultStats } from '@mc/shared'
 import { wsUrl } from '../lib/api'
 import { notify } from '../lib/notify'
 import { useLinks } from './linksStore'
+import { useServices } from './servicesStore'
 import { useStatus } from './statusStore'
 import { useVault } from './vaultStore'
 
@@ -46,6 +47,7 @@ export const useEvents = create<EventsState>((set) => ({
           | { type: 'vault'; stats: VaultStats }
           | { type: 'ingest'; delta: number; at: number }
           | { type: 'status'; agent: string; status: AgentStatus; action: string; ctx: number | null }
+          | { type: 'service'; agent: string; running: boolean; url: string | null }
         if (event.type === 'heartbeat') {
           set({ baseLive: true })
           armBeat()
@@ -65,6 +67,8 @@ export const useEvents = create<EventsState>((set) => ({
             notify('Agent needs you', `${event.agent.toUpperCase()} is waiting for your input`)
           }
           useStatus.getState().set(event.agent, event.status, event.action, event.ctx)
+        } else if (event.type === 'service') {
+          useServices.getState().setService(event.agent, event.running, event.url)
         }
       }
       sock.onclose = () => {

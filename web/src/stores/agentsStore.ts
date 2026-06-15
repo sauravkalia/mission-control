@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AgentMeta } from '@mc/shared'
 import { apiUrl } from '../lib/api'
+import { useServices } from './servicesStore'
 import { useStatus } from './statusStore'
 
 type AgentsState = {
@@ -23,6 +24,7 @@ export const useAgents = create<AgentsState>((set, get) => ({
       if (!res.ok) throw new Error(String(res.status))
       const agents = (await res.json()) as AgentMeta[]
       useStatus.getState().seed(agents)
+      useServices.getState().seed(agents)
       // Keep the array identity stable across polls — a fresh identity every
       // 5s re-renders every card tree for nothing.
       const same = JSON.stringify(agents) === JSON.stringify(get().agents)

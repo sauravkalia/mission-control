@@ -11,6 +11,7 @@ export type McEvent =
   | { type: 'vault'; stats: VaultStats }
   | { type: 'ingest'; delta: number; at: number }
   | { type: 'status'; agent: string; status: AgentStatus; action: string; ctx: number | null }
+  | { type: 'service'; agent: string; running: boolean; url: string | null }
 
 const clients = new Set<WebSocket>()
 

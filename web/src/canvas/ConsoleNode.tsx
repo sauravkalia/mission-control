@@ -33,6 +33,7 @@ export const ConsoleNode = memo(({ id, data, selected }: NodeProps) => {
         <Handle key={s.id} id={s.id} type="source" position={s.pos} className="mc-port" />
       ))}
       <ConsoleCard
+        agent={meta.agent}
         callsign={meta.agent.toUpperCase()}
         session={sessionNameFor(meta.agent)}
         repoLabel={shortenHome(meta.repoDir)}

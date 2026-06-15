@@ -6,6 +6,7 @@ import { PORT, WEB_PORT } from './config'
 import { readEnvironment } from './environment'
 import { addEventClient, startHeartbeat } from './events'
 import { handleMcp } from './mcp'
+import { startServicePolling } from './services'
 import { startStatusPolling } from './status'
 import { closeVault, startVaultPolling, vaultStats } from './vault'
 import { attachRelay } from './relay'
@@ -121,6 +122,7 @@ server.on('upgrade', (req, socket, head) => {
 startHeartbeat()
 const vaultPoll = startVaultPolling()
 const statusPoll = startStatusPolling()
+const servicePoll = startServicePolling()
 
 // Reap the spawned AgentVault python on shutdown / tsx-watch restart, instead of
 // orphaning it (its child isn't in our process group, so SIGTERM won't reach it).
@@ -130,6 +132,7 @@ const shutdown = () => {
   shuttingDown = true
   if (vaultPoll) clearInterval(vaultPoll)
   clearInterval(statusPoll)
+  clearInterval(servicePoll)
   void closeVault().finally(() => process.exit(0))
 }
 process.on('SIGINT', shutdown)

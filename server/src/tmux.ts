@@ -64,6 +64,19 @@ export const spawnAgentSession = ({ agent, repoDir, sessionId, claudeBin, hooksP
 export const killSession = (name: string): Promise<boolean> =>
   tmux(['kill-session', '-t', `=${name}`]).then(r => r.ok)
 
+// Run a project's dev server in its own tmux session via a login shell (so
+// nvm/pnpm/PATH resolve). remain-on-exit keeps a crashed server's logs visible.
+export const startServiceSession = async (name: string, cwd: string, command: string): Promise<boolean> => {
+  const shell = process.env['SHELL'] ?? '/bin/zsh'
+  const result = await tmux([
+    'new-session', '-d', '-s', name, '-c', cwd, '-x', '200', '-y', '50',
+    shell, '-lc', command,
+    ';',
+    'set-option', '-w', '-t', `=${name}:`, 'remain-on-exit', 'on',
+  ])
+  return result.ok
+}
+
 // session name → pane_dead, for every live mc-* session.
 // `tmux list-panes` exits 1 when no tmux server runs — that just means zero sessions.
 export const listMcSessions = async (): Promise<Map<string, { dead: boolean }>> => {

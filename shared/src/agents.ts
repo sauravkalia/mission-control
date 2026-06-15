@@ -8,6 +8,8 @@ export type AgentActivity = {
   ctx: number | null // context-window % (0–100), or null if unknown
 }
 
+export type ServiceState = { running: boolean; url: string | null }
+
 export type AgentMeta = {
   agent: string
   repoDir: string
@@ -17,6 +19,7 @@ export type AgentMeta = {
   status: AgentStatus
   action: string
   ctx: number | null
+  service: ServiceState
 }
 
 export type SpawnRequest = {

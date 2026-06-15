@@ -9,6 +9,7 @@ import { emitLinksChanged } from './events'
 import { addLink, listLinks, pruneLinks, removeLink } from './links'
 import { hooksFilePath, loadRegistry, saveRegistry, type AgentRecord } from './registry'
 import { getActivity } from './status'
+import { getService, startService, stopService } from './services'
 import {
   capturePaneTail,
   killSession,
@@ -57,6 +58,7 @@ const toMeta = (r: AgentRecord, live: Map<string, { dead: boolean }>): AgentMeta
     status: dead ? 'exited' : activity.status,
     action: dead ? '' : activity.action,
     ctx: dead ? null : activity.ctx,
+    service: { running: getService(r.agent).running, url: getService(r.agent).url },
   }
 }
 
@@ -185,6 +187,37 @@ export const agentsRouter = (): Router => {
     res.status(201).json(toMeta(record, live))
   })
 
+  // "Run app" — start/stop the agent's project dev server
+  router.post('/agents/:agent/server', async (req, res) => {
+    const record = registry.find(r => r.agent === req.params.agent)
+    if (!record) {
+      res.status(404).json({ error: `no such agent: ${req.params.agent}` })
+      return
+    }
+    const result = await startService(record.agent, record.repoDir)
+    res.status(result.ok ? 201 : 400).json(result)
+  })
+
+  router.delete('/agents/:agent/server', async (req, res) => {
+    await stopService(req.params.agent)
+    res.status(200).json({ ok: true })
+  })
+
+  // "Connect Playwright" — tell the agent to open the running app in a browser
+  router.post('/agents/:agent/playwright', async (req, res) => {
+    const agent = req.params.agent
+    if (!registry.some(r => r.agent === agent)) {
+      res.status(404).json({ error: `no such agent: ${agent}` })
+      return
+    }
+    const url = getService(agent).url
+    const message = url
+      ? `Use the Playwright MCP to open ${url} in the browser, walk through the app, and report what you see and any issues you find. Keep the browser visible.`
+      : `Use the Playwright MCP to open this project's local dev app in a visible browser (start the dev server first if it isn't running), walk through the app, and report what you see and any issues.`
+    const ok = await sendToSession(sessionNameFor(agent), message)
+    res.status(ok ? 200 : 500).json({ ok, url })
+  })
+
   router.post('/agents/:agent/send', async (req, res) => {
     const agent = req.params.agent
     const { message } = (req.body ?? {}) as { message?: unknown }
@@ -208,6 +241,7 @@ export const agentsRouter = (): Router => {
       return
     }
     await killSession(sessionNameFor(agent))
+    await stopService(agent) // tear down its dev server too
     registry = registry.filter(r => r.agent !== agent)
     saveRegistry(registry)
     res.status(204).end()
