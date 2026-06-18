@@ -1,0 +1,106 @@
+name: 'PR Review (Gemini)'
+
+# Automated CodeRabbit-style PR review.
+# - On `opened`/`reopened`: posts inline review comments (first-review mode).
+# - On `synchronize` (new push): re-reviews, replies "✅ Fixed" + resolves addressed
+#   threads, re-pings the author for what's left, or pings the reviewer when all clear.
+# The bot only ever submits COMMENT reviews — it never approves. A human approving
+# review (enforced by branch protection) remains the merge gate.
+#
+# Provider swap: replace the "Gemini PR review" step with anthropics/claude-code-action@v1
+# (anthropic_api_key + same prompt); the rest of this workflow is provider-agnostic.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main] # sphere-v3-web rollout: change to [development]
+
+concurrency:
+  # One review per PR; cancel an in-flight review when a newer push lands so we
+  # never post duplicate/overlapping comments.
+  group: 'pr-review-${{ github.event.pull_request.number }}'
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  review:
+    # Skip drafts and skip our own bot's pushes (avoids self-trigger loops).
+    if: ${{ github.event.pull_request.draft == false && github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout PR head (full history for base diff)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Assemble review prompt + runtime context
+        env:
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REVIEWER: ${{ github.repository_owner }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_ACTION: ${{ github.event.action }}
+        run: |
+          {
+            echo 'REVIEW_PROMPT<<__PROMPT_EOF__'
+            cat .github/pr-review/prompt.md
+            echo ""
+            echo "---"
+            echo "## Runtime context (injected by CI)"
+            echo "- Repository: \`$REPO\`"
+            echo "- PR number: \`$PR_NUMBER\`"
+            echo "- PR author: \`@$PR_AUTHOR\`"
+            echo "- Designated human reviewer to ping when all clear: \`@$REVIEWER\`"
+            echo "- Base SHA: \`$BASE_SHA\`"
+            echo "- Head SHA: \`$HEAD_SHA\`"
+            echo "- Triggering event action: \`$EVENT_ACTION\` (opened/reopened = first review; synchronize = re-review)"
+            echo '__PROMPT_EOF__'
+          } >> "$GITHUB_ENV"
+
+      - name: Gemini PR review
+        uses: google-github-actions/run-gemini-cli@v0
+        env:
+          GEMINI_CLI_TRUST_WORKSPACE: 'true'
+          # `gh` reads GH_TOKEN; the GitHub MCP server reads GITHUB_TOKEN.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: 'gemini-2.5-pro'
+          github_pr_number: ${{ github.event.pull_request.number }}
+          settings: |-
+            {
+              "model": { "maxSessionTurns": 30 },
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run", "-i", "--rm",
+                    "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "includeTools": [
+                    "add_comment_to_pending_review",
+                    "pull_request_read",
+                    "pull_request_review_write"
+                  ],
+                  "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}" }
+                }
+              },
+              "tools": { "core": ["run_shell_command"] }
+            }
+          prompt: '${{ env.REVIEW_PROMPT }}'
